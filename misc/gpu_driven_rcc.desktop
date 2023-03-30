@@ -1,0 +1,8 @@
+[Desktop Entry]
+Encoding=UTF-8
+Version=1.0
+Type=Application
+Terminal=false
+Exec=/bin/gpu_driven_rcc
+Name=gpu_driven_rcc
+Icon=/usr/share/gpu_driven_rcc/assets/app_icon.svg
