@@ -35,6 +35,7 @@
     "IsometricHeight": 28.550010681152344,
     "MaxCellCount": 27,
     "MovementSpeed": 0.029999999329447746,
+    "ImGuiIniFilepath": "./assets/imgui.ini",
     "NearPlane": 2.0,
     "Reciprocal Gamma": 2.2,
     "Shininess": 4,

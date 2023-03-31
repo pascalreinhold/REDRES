@@ -349,10 +349,9 @@ void VisDataLoader::loadUnitCell(int systemID) {
   za = glm::radians(strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 5)), nullptr));
 
   vis->unitCellGLM[0] = glm::vec3{xl, 0.f, 0.f};
-  vis->unitCellGLM[1] =
-      yl*normalize(glm::vec3(glm::rotate(za, glm::vec3{0.f, 0.f, 1.f})*glm::vec4(vis->unitCellGLM[0], 0)));
+  vis->unitCellGLM[1] = yl * normalize(glm::vec3(glm::rotate(za, glm::vec3{0.f, 0.f, 1.f})*glm::vec4(vis->unitCellGLM[0], 0)));
   vis->unitCellGLM[2] = glm::vec3{0.f, 0.f, zl};
-
+  
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       vis->unitCellEigen(i, j) = vis->unitCellGLM[i][j];

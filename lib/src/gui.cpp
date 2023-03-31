@@ -860,11 +860,16 @@ void UserInterface::initImGui() {
 
   ImGui::CreateContext();
 
+  const std::string imgui_ini_path = Engine::getConfig()["AssetDirectoryFilepath"].get<std::string>()
+                                   + Engine::getConfig()["ImGuiIniFilepath"].get<std::string>();
+  ImGui::GetIO().IniFilename = imgui_ini_path.c_str();
+
   if (bLightMode) {
     setupGuiStyle();
   } else {
     setupGuiStyleDark();
   }
+
 
   ImGui_ImplGlfw_InitForVulkan(parentEngine->window_->glfwWindow_, true);
   ImGui_ImplVulkan_InitInfo init_info = {};
