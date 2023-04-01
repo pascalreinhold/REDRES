@@ -54,7 +54,7 @@ set(SOURCES
         "${INCLUDE_DIR}/vulkan_types.hpp"
 )
 
-add_executable(${APP_TARGET} main.cpp ${SOURCES})
+add_executable(${APP_TARGET}  "${SOURCE_DIR}/main.cpp" ${SOURCES})
 
 target_include_directories(${APP_TARGET} PRIVATE ${INCLUDE_DIR})
 target_include_directories(${APP_TARGET} PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends)
@@ -115,8 +115,8 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets DESTINATION /usr/share/${PR
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/misc/${PROJECT_NAME}.desktop DESTINATION /usr/share/applications)
 
 set(CPACK_GENERATOR "DEB")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENCE")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/docs/LICENCE")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/docs/README.md")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
         "libc6, libvulkan-dev,libglm-dev,libglfw3-dev,libsqlite3-dev,vulkan-validationlayers-dev,libtbb2")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/")

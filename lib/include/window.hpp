@@ -16,7 +16,7 @@ class SurfaceKHR;
 namespace rcc {
 class Window {
  public:
-  Window(int width, int height, std::string name);
+  Window(int width, int height, const std::string& name);
   ~Window();
 
   // Delete Copy and Assignment Operations
@@ -26,8 +26,9 @@ class Window {
   [[nodiscard]] int height() const;
   [[nodiscard]] int width() const;
   [[nodiscard]] double aspect() const;
-
-  [[nodiscard]] bool wasResized() const { return wasWindowResized; }
+  [[nodiscard]] bool wasResized() const {return wasWindowResized;}
+  [[nodiscard]] const std::string &windowName() const { return windowName_; }
+  void setWindowName(const std::string &new_window_name);
   static void windowResizeCallback(GLFWwindow *window, int width, int height);
   void resetWasResizedFlag() { wasWindowResized = false; }
 

@@ -1,5 +1,6 @@
 # Build Instructions
 | [Build Tools](#Build Tools) | [External Dependencies](#External Dependencies) | [Compiling](#Compiling) |
+
 ## Build Tools
 If you want to build the software from source you need to install the following tools, if you don't have them already.
 - [git](https://git-scm.com/), to load the git submodules
@@ -13,7 +14,6 @@ If you are using a Debian based distribution like Ubuntu you can install them by
     sudo apt install cmake # C/C++ buildsystem
     sudo apt install build-essential # GNU C++ Compiler and Makefiles
 ```
-
 ## External Dependencies
 To following libraries are needed to build the software:
 - [vulkan](https://www.khronos.org/vulkan/) - Graphics API

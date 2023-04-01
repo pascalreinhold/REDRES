@@ -67,6 +67,8 @@ class UserInterface {
   void showSettingTable(int settingID);
   void showEventsTable(int experimentID);
   static bool showSelectionRectangle(ImVec2 &start_pos, ImVec2 &end_pos);
+
+  friend class Engine;
 };
 
 } // namespace rcc

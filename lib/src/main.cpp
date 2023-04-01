@@ -2,8 +2,6 @@
 #include <stdexcept>
 #include <iostream>
 
-
-
 int main(int argc, char* argv[]){
   const char* db_filepath = (argc >= 2) ? argv[1] : "";
   const char* assets_dir_path = (argc >= 3) ? argv[2] : nullptr;

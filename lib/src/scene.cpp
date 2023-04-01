@@ -13,8 +13,7 @@
 namespace rcc {
 
 Scene::Scene(const std::string &dbFilepath, int experimentID) {
-
-  if (!dbFilepath.empty()) visLoader = std::make_unique<VisDataLoader>(dbFilepath, experimentID);
+  if (!dbFilepath.empty()) visManager = std::make_unique<VisDataManager>(dbFilepath, experimentID);
 
   objectTypes[meshID::eAtom] = new AtomType(*this);
   objectTypes[meshID::eUnitCell] = new UnitCellType(*this);
@@ -25,6 +24,8 @@ Scene::Scene(const std::string &dbFilepath, int experimentID) {
   objectTypes[meshID::eVector]->shown = false;
   objectTypes[meshID::eCylinder]->shown = false;
 
+  auto catalyst_color = Engine::getConfig()["CatalystColor"].get<std::array<float, 4>>();
+  auto chemical_color = Engine::getConfig()["ChemicalColor"].get<std::array<float, 4>>();
   gConfig = VisualizationConfig{Engine::getConfig()["AtomSize"].get<float>(),
                                 Engine::getConfig()["BondLength"].get<float>(),
                                 Engine::getConfig()["BondThickness"].get<float>(),
@@ -32,9 +33,12 @@ Scene::Scene(const std::string &dbFilepath, int experimentID) {
                                 Engine::getConfig()["HinumaThickness"].get<float>(),
                                 Engine::getConfig()["BoxCountX"].get<int>(),
                                 Engine::getConfig()["BoxCountY"].get<int>(),
-                                Engine::getConfig()["BoxCountZ"].get<int>()};
+                                Engine::getConfig()["BoxCountZ"].get<int>(),
+                                {catalyst_color[0], catalyst_color[1], catalyst_color[2], catalyst_color[3]},
+                                {chemical_color[0], chemical_color[1], chemical_color[2], chemical_color[3]}
+                                };
 
-  if (visLoader) freezeAtomIndex = tryPickFreezeAtom();
+  if (visManager) freezeAtomIndex = tryPickFreezeAtom();
 }
 
 Scene::~Scene() {
@@ -44,10 +48,10 @@ Scene::~Scene() {
 }
 
 inline glm::vec3 Scene::antiStutterOffset(uint32_t movieFrameIndex) const {
-  if (visLoader) {
+  if (visManager) {
     Eigen::Vector3f temp = (freezeAtomIndex==-1) ? Eigen::Vector3f::Zero() : Eigen::Vector3f(
-        visLoader->data().positions[0].row(freezeAtomIndex)
-            - visLoader->data().positions[movieFrameIndex].row(freezeAtomIndex));
+        visManager->data().positions[0].row(freezeAtomIndex)
+            - visManager->data().positions[movieFrameIndex].row(freezeAtomIndex));
     return {temp(0), temp(1), temp(2)};
   } else {
     return {0.f, 0.f, 0.f};
@@ -79,7 +83,7 @@ void Scene::writeObjectAndInstanceBuffer(GPUObjectData *objectSSBO,
                                          uint32_t movieFrameIndex,
                                          uint32_t selectedObjectIndex) const {
 
-  const auto &atom_positions = visLoader->data().positions[movieFrameIndex];
+  const auto &atom_positions = visManager->data().positions[movieFrameIndex];
   uint32_t object_index = 0;
   for (const auto &type : objectTypes) {
     if (type->isLoaded() && type->shown) {
@@ -97,11 +101,11 @@ int Scene::tryPickFreezeAtom() const {
   size_t i1 = 0, i2 = (MovieFrameCount() - 1)/2, i3 = MovieFrameCount() - 1;
 
   // we need at least 3 frames with minimum two atoms
-  if (visLoader->data().positions.size() < 3 || objectTypes[meshID::eAtom]->Count(i1) < 2) { return -1; }
+  if (visManager->data().positions.size() < 3 || objectTypes[meshID::eAtom]->Count(i1) < 2) { return -1; }
 
-  const Eigen::Matrix<float, Eigen::Dynamic, 3> &pos1 = visLoader->data().positions[i1];
-  const Eigen::Matrix<float, Eigen::Dynamic, 3> &pos2 = visLoader->data().positions[i2];
-  const Eigen::Matrix<float, Eigen::Dynamic, 3> &pos3 = visLoader->data().positions[i3];
+  const Eigen::Matrix<float, Eigen::Dynamic, 3> &pos1 = visManager->data().positions[i1];
+  const Eigen::Matrix<float, Eigen::Dynamic, 3> &pos2 = visManager->data().positions[i2];
+  const Eigen::Matrix<float, Eigen::Dynamic, 3> &pos3 = visManager->data().positions[i3];
 
   for (int i = 0; i < pos1.rows() - 1; i++) {
     if (((pos1.row(i) - pos1.row(i + 1))
@@ -114,15 +118,15 @@ int Scene::tryPickFreezeAtom() const {
 
 std::string AtomType::ObjectInfo(uint32_t movieFrameIndex, uint32_t inTypeIndex) const {
   std::ostringstream str;
-  const auto selected_pos = s.visLoader->data().positions[movieFrameIndex].row(inTypeIndex);
-  str << "Atom ID: " << s.visLoader->data().atomIDs[inTypeIndex]
+  const auto selected_pos = s.visManager->data().positions[movieFrameIndex].row(inTypeIndex);
+  str << "Atom ID: " << s.visManager->data().atomIDs[inTypeIndex]
       << "\nAtom Coords:\n" << "[" << selected_pos(0) << ", " << selected_pos(1) << ", " << selected_pos(2) << "]";
   return str.str();
 }
 
 std::string UnitCellType::ObjectInfo(uint32_t movieFrameIndex, uint32_t inTypeIndex) const {
   std::ostringstream str;
-  const auto &cell = s.visLoader->data().unitCellEigen;
+  const auto &cell = s.visManager->data().unitCellEigen;
   str << "Unit Cell ID: " << inTypeIndex << "\nUnit Cell Basis:\n"
       << "[" << cell(0, 0) << ", " << cell(0, 1) << ", " << cell(0, 2) << "]\n"
       << "[" << cell(1, 0) << ", " << cell(1, 1) << ", " << cell(1, 2) << "]\n"
@@ -132,8 +136,8 @@ std::string UnitCellType::ObjectInfo(uint32_t movieFrameIndex, uint32_t inTypeIn
 
 std::string VectorType::ObjectInfo(uint32_t movieFrameIndex, uint32_t inTypeIndex) const {
   std::ostringstream str;
-  uint32_t hinuma_atom_id = s.visLoader->data().hinuma_atom_numbers[inTypeIndex];
-  Eigen::Vector4f hinuma_vec = s.visLoader->data().hinuma_vectors.row(inTypeIndex);
+  uint32_t hinuma_atom_id = s.visManager->data().hinuma_atom_numbers[inTypeIndex];
+  Eigen::Vector4f hinuma_vec = s.visManager->data().hinuma_vectors.row(inTypeIndex);
 
   str << "Vector ID: " << inTypeIndex << " Attached Atom ID: " << hinuma_atom_id << "\n" <<
       "Hinuma Vector: [" << hinuma_vec(0) << ", " << hinuma_vec(1) << ", " << hinuma_vec(2) << "]\nMagnitude: "
@@ -143,7 +147,7 @@ std::string VectorType::ObjectInfo(uint32_t movieFrameIndex, uint32_t inTypeInde
 
 // COUNTS
 uint32_t AtomType::Count(uint32_t movieFrameIndex) const {
-  return s.visLoader->data().positions[movieFrameIndex].rows();
+  return s.visManager->data().positions[movieFrameIndex].rows();
 }
 
 uint32_t UnitCellType::Count(uint32_t movieFrameIndex) const {
@@ -155,16 +159,16 @@ uint32_t CylinderType::Count(uint32_t movieFrameIndex) const {
 }
 
 uint32_t VectorType::Count(uint32_t movieFrameIndex) const {
-  return s.visLoader->data().hinuma_atom_numbers.size();
+  return s.visManager->data().hinuma_atom_numbers.size();
 }
 
 uint32_t BondType::Count(uint32_t movieFrameIndex) const {
-  return s.visLoader->data().bonds[movieFrameIndex].size();
+  return s.visManager->data().bonds[movieFrameIndex].size();
 }
 
 // MAX COUNTS
 uint32_t AtomType::MaxCount() const {
-  return std::max_element(s.visLoader->data().positions.begin(), s.visLoader->data().positions.end(),
+  return std::max_element(s.visManager->data().positions.begin(), s.visManager->data().positions.end(),
                           [](const auto &a, const auto &b) { return a.rows() < b.rows(); })->rows();
 }
 
@@ -173,7 +177,7 @@ uint32_t UnitCellType::MaxCount() const {
 }
 
 uint32_t VectorType::MaxCount() const {
-  return s.visLoader->data().hinuma_atom_numbers.size();
+  return s.visManager->data().hinuma_atom_numbers.size();
 }
 
 uint32_t CylinderType::MaxCount() const {
@@ -181,26 +185,26 @@ uint32_t CylinderType::MaxCount() const {
 }
 
 uint32_t BondType::MaxCount() const {
-  const auto largestVectorElement = std::max_element(s.visLoader->data().bonds.begin(), s.visLoader->data().bonds.end(),
+  const auto largestVectorElement = std::max_element(s.visManager->data().bonds.begin(), s.visManager->data().bonds.end(),
                                                      [](const auto &a, const auto &b) { return a.size() < b.size(); });
   return largestVectorElement->size();
 }
 
 // IS LOADED
 bool AtomType::isLoaded() const {
-  return !s.visLoader->data().positions.empty();
+  return !s.visManager->data().positions.empty();
 }
 
 bool BondType::isLoaded() const {
-  return !s.visLoader->data().bonds.empty();
+  return !s.visManager->data().bonds.empty();
 }
 
 bool VectorType::isLoaded() const {
-  return s.visLoader->data().hinuma_atom_numbers.size()!=0;
+  return s.visManager->data().hinuma_atom_numbers.size()!=0;
 }
 
 bool UnitCellType::isLoaded() const {
-  return s.visLoader->data().unitCellEigen!=Eigen::Matrix3f::Zero();
+  return s.visManager->data().unitCellEigen!=Eigen::Matrix3f::Zero();
 }
 
 
@@ -238,10 +242,24 @@ bool UnitCellType::isLoaded() const {
 //}
 
 glm::vec4 Scene::getAtomColor(uint32_t tag) const {
+  // C++ syntax for calling a member function pointer pls
+  return (this ->* ((const rcc::Scene*)this)->rcc::Scene::current_atom_color_function)(tag);
+}
+
+glm::vec4 Scene::colorAtomByElementNumber(uint32_t tag) const {
   if ((tag & Tags::eSelectedByClick)==Tags::eSelectedByClick) return {0.224f, 1.f, 0.078f, 1.f};
   if ((tag & Tags::eSelectedByArea)==Tags::eSelectedByArea) return {0.7f, 0.72f, 0.95f, 1.f};
   if ((tag & Tags::eHighlighted)==Tags::eHighlighted) return {0.83f, 0.1f, 0.7f, 1.f};
-  return {visLoader->data().elementInfos.find((tag & 255))->second.color, 1.f};
+  return {visManager->data().elementInfos.find((tag & 255))->second.color, 1.f};
+}
+
+glm::vec4 Scene::colorAtomByBaseType(uint32_t tag) const {
+  if ((tag & Tags::eSelectedByClick)==Tags::eSelectedByClick) return {0.224f, 1.f, 0.078f, 1.f};
+  if ((tag & Tags::eSelectedByArea)==Tags::eSelectedByArea) return {0.7f, 0.72f, 0.95f, 1.f};
+  if ((tag & Tags::eHighlighted)==Tags::eHighlighted) return {0.83f, 0.1f, 0.7f, 1.f};
+  if ((tag & Tags::eCatalyst)==Tags::eCatalyst) return gConfig.catalyst_color_;
+  if ((tag & Tags::eChemical)==Tags::eChemical) return gConfig.chemical_color_;
+  return {visManager->data().elementInfos.find((tag & 255))->second.color, 1.f};
 }
 
 void AtomType::writeToObjectBufferAndIndexBuffer(uint32_t movieFrameIndex,
@@ -250,18 +268,18 @@ void AtomType::writeToObjectBufferAndIndexBuffer(uint32_t movieFrameIndex,
                                                  GPUObjectData *objectSSBO,
                                                  GPUInstance *instanceSSBO) const {
   uint32_t object_index = firstIndex;
-  const auto &atom_positions = s.visLoader->data().positions[movieFrameIndex];
+  const auto &atom_positions = s.visManager->data().positions[movieFrameIndex];
   glm::vec3 anti_stutter_offset = s.antiStutterOffset(movieFrameIndex);
 
   for (int i = 0; i < atom_positions.rows(); i++) {
-    uint32_t element_number = (s.visLoader->data().tags[object_index] & 255);
-    const float radius = s.visLoader->data().elementInfos.find(element_number)->second.atomRadius;
+    uint32_t element_number = (s.visManager->data().tags[object_index] & 255);
+    const float radius = s.visManager->data().elementInfos.find(element_number)->second.atomRadius;
     const glm::vec3 pos =
         glm::vec3{atom_positions(object_index, 0), atom_positions(object_index, 1), atom_positions(object_index, 2)}
             + anti_stutter_offset;
     const auto modelMatrix = glm::translate(glm::mat4{1.f}, pos);
     objectSSBO[object_index].modelMatrix = glm::scale(modelMatrix, glm::vec3(radius*s.gConfig.atomSize));
-    objectSSBO[object_index].color1 = s.getAtomColor(s.visLoader->data().tags[object_index]);
+    objectSSBO[object_index].color1 = s.getAtomColor(s.visManager->data().tags[object_index]);
     objectSSBO[object_index].radius = s.meshes->meshInfos[meshID::eAtom].radius*radius*s.gConfig.atomSize;
     objectSSBO[object_index].batchID = meshID::eAtom;
     instanceSSBO[object_index].object_id = object_index;
@@ -294,14 +312,14 @@ void VectorType::writeToObjectBufferAndIndexBuffer(uint32_t movieFrameIndex,
                                                    GPUObjectData *objectSSBO,
                                                    GPUInstance *instanceSSBO) const {
   uint32_t object_index = firstIndex;
-  const auto &atom_positions = s.visLoader->data().positions[movieFrameIndex];
+  const auto &atom_positions = s.visManager->data().positions[movieFrameIndex];
   glm::vec3 anti_stutter_offset = s.antiStutterOffset(movieFrameIndex);
 
-  for (int i = 0; i < s.visLoader->data().hinuma_atom_numbers.size(); i++) {
-    const Eigen::Matrix<int, Eigen::Dynamic, 1> &id_vec = s.visLoader->data().hinuma_atom_numbers;
-    const Eigen::Matrix<float, Eigen::Dynamic, 4> &vectors = s.visLoader->data().hinuma_vectors;
+  for (int i = 0; i < s.visManager->data().hinuma_atom_numbers.size(); i++) {
+    const Eigen::Matrix<int, Eigen::Dynamic, 1> &id_vec = s.visManager->data().hinuma_atom_numbers;
+    const Eigen::Matrix<float, Eigen::Dynamic, 4> &vectors = s.visManager->data().hinuma_vectors;
 
-    auto const &elm_info = s.visLoader->data().elementInfos.find(s.visLoader->data().tags(id_vec[i]) & 255)->second;
+    auto const &elm_info = s.visManager->data().elementInfos.find(s.visManager->data().tags(id_vec[i]) & 255)->second;
 
     const float length = vectors(i, 3);
     const glm::vec3 hinuma_vec = normalize(glm::vec3{vectors(i, 0), vectors(i, 1), vectors(i, 2)});
@@ -339,7 +357,7 @@ void BondType::writeToObjectBufferAndIndexBuffer(uint32_t movieFrameIndex,
   assert(isLoaded());
   uint32_t object_index = firstIndex;
   glm::vec3 anti_stutter_offset = s.antiStutterOffset(movieFrameIndex);
-  const auto &bonds = s.visLoader->data().bonds[movieFrameIndex];
+  const auto &bonds = s.visManager->data().bonds[movieFrameIndex];
   for (const auto &bond : bonds) {
     const glm::vec3 pos = (bond.pos1 + bond.pos2)*0.5f;
     const glm::vec3 displacement = bond.pos1 - bond.pos2;
@@ -375,10 +393,10 @@ void CylinderType::writeToObjectBufferAndIndexBuffer(uint32_t movieFrameIndex,
                                                      GPUInstance *instanceSSBO) const {
   uint32_t object_index = firstIndex;
 
-  const auto &atom_positions = s.visLoader->data().positions[movieFrameIndex];
+  const auto &atom_positions = s.visManager->data().positions[movieFrameIndex];
   glm::vec3 anti_stutter_offset = s.antiStutterOffset(movieFrameIndex);
 
-  const auto &activeEvent = s.visLoader->data().activeEvent;
+  const auto &activeEvent = s.visManager->data().activeEvent;
   if (activeEvent!=nullptr) {
     glm::vec3 n = s.eventViewerSettings.surfaceNormals ? activeEvent->surfaceNormal : activeEvent->connectionNormal;
     glm::vec3 cylinder_up{0.f, 1.f, 0.f};

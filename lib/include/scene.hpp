@@ -119,20 +119,22 @@ class Scene {
     int xCellCount;
     int yCellCount;
     int zCellCount;
+    glm::vec4 catalyst_color_;
+    glm::vec4 chemical_color_;
   } gConfig{};
 
   ObjectType *objectTypes[RCC_MESH_COUNT]{};
   void setMeshes(MeshMerger *mesh_merger) { meshes = mesh_merger; };
 
-  [[nodiscard]] uint32_t MovieFrameCount() const { return visLoader->data().positions.size(); }
+  [[nodiscard]] uint32_t MovieFrameCount() const { return visManager->data().positions.size(); }
   [[nodiscard]] std::string getObjectInfo(uint32_t movieFrameIndex, uint32_t objectIndex) const;
   [[nodiscard]] uint32_t uniqueShownObjectCount(uint32_t movieFrameIndex) const;
-  [[nodiscard]] const glm::mat3 &cellGLM() const { return visLoader->data().unitCellGLM; }
-  [[nodiscard]] const Eigen::Matrix<float, 3, 3> &cellEigen() const { return visLoader->data().unitCellEigen; }
+  [[nodiscard]] const glm::mat3 &cellGLM() const { return visManager->data().unitCellGLM; }
+  [[nodiscard]] const Eigen::Matrix<float, 3, 3> &cellEigen() const { return visManager->data().unitCellEigen; }
   [[nodiscard]] int freezeAtom() const { return freezeAtomIndex; }
   [[nodiscard]] int tryPickFreezeAtom() const; // returns -1 if not successful
   [[nodiscard]] inline glm::vec3 antiStutterOffset(uint32_t movieFrameIndex) const;
-  [[nodiscard]]glm::vec4 getAtomColor(uint32_t tag) const;
+
   void pickFreezeAtom(const int atomIndex) { freezeAtomIndex = atomIndex; }
   void writeObjectAndInstanceBuffer(GPUObjectData *objectData,
                                     GPUInstance *instanceData,
@@ -146,7 +148,7 @@ class Scene {
     abort();
   }
 
-  std::unique_ptr<VisDataLoader> visLoader;
+  std::unique_ptr<VisDataManager> visManager;
 
   struct {
     float cylinderLength = 11.f;
@@ -158,6 +160,15 @@ class Scene {
   MeshMerger *meshes = nullptr;
  private:
   int freezeAtomIndex = -1;
+
+  [[nodiscard]] glm::vec4 getAtomColor(uint32_t tag) const;
+  [[nodiscard]] glm::vec4 colorAtomByElementNumber(uint32_t tag) const;
+  [[nodiscard]] glm::vec4 colorAtomByBaseType(uint32_t tag) const;
+  // function pointer to atom color member function
+  glm::vec4 (Scene::*current_atom_color_function)(uint32_t tag) const = &Scene::colorAtomByElementNumber;
+ public:
+  void activateColorByElementNumber() { current_atom_color_function = &Scene::colorAtomByElementNumber; }
+  void activateColorByBaseType() { current_atom_color_function = &Scene::colorAtomByBaseType; }
 
   friend AtomType;
   friend UnitCellType;

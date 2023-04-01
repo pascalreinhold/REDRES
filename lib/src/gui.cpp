@@ -44,7 +44,7 @@ void UserInterface::showMainMenubar() {
         clicked = true;
       }
       if (ImGui::MenuItem("Unload Database")) {
-        parentEngine->scene_->visLoader.reset(nullptr);
+        parentEngine->scene_->visManager.reset(nullptr);
       }
       ImGui::Separator();
       if (ImGui::MenuItem("User Preferences")) {
@@ -55,7 +55,7 @@ void UserInterface::showMainMenubar() {
 
     if (ImGui::BeginMenu("View")) {
       for (const auto type : parentEngine->scene_->objectTypes) {
-        if (parentEngine->scene_->visLoader) {
+        if (parentEngine->scene_->visManager) {
           if (type->isLoaded()) {
             std::string label = "Show " + type->typeIdentifier;
             ImGui::Checkbox(label.c_str(), &type->shown);
@@ -96,7 +96,7 @@ void UserInterface::showEventsTable(int experimentID) {
     // load setting from database if not already loaded
     if (loadedEventsText.find(experimentID)==loadedEventsText.end()) {
       EventsText eventsText;
-      parentEngine->scene_->visLoader->exportEvents(experimentID, eventsText);
+      parentEngine->scene_->visManager->exportEvents(experimentID, eventsText);
       loadedEventsText.insert({experimentID, eventsText});
     }
 
@@ -109,8 +109,8 @@ void UserInterface::showEventsTable(int experimentID) {
     for (int j = 0; j < events.size(); j++) {
 
       bool isActive = false;
-      if (parentEngine->scene_->visLoader->data().activeEvent) isActive = std::get<0>(events[j])
-            ==parentEngine->scene_->visLoader->data().activeEvent->eventID;
+      if (parentEngine->scene_->visManager->data().activeEvent) isActive = std::get<0>(events[j])
+            ==parentEngine->scene_->visManager->data().activeEvent->eventID;
 
       ImGui::TableNextColumn();
       ImGui::Text(isActive ? "%d, active" : "%d", std::get<0>(events[j]));
@@ -162,19 +162,19 @@ void UserInterface::showEventInfoWindow() {
       } else {
         ImGui::SliderFloat("CylinderLength", &parentEngine->scene_->eventViewerSettings.cylinderLength, 0, 100);
         ImGui::SliderFloat("CylinderRadius", &parentEngine->scene_->eventViewerSettings.cylinderRadius, 0, 30);
-        for (const auto &atomIndex : parentEngine->scene_->visLoader->data().activeEvent->chemical_atom_numbers) {
+        for (const auto &atomIndex : parentEngine->scene_->visManager->data().activeEvent->chemical_atom_numbers) {
           ImGui::Text("Atom Number: %d", atomIndex);
         }
-        for (const auto &atomIndex : parentEngine->scene_->visLoader->data().activeEvent->catalyst_atom_numbers) {
+        for (const auto &atomIndex : parentEngine->scene_->visManager->data().activeEvent->catalyst_atom_numbers) {
           ImGui::Text("Atom Number: %d", atomIndex);
         }
         ImGui::Text("Cylinder Center:");
-        ImGui::Text("%s", glm::to_string(parentEngine->scene_->visLoader->data().activeEvent->center).c_str());
+        ImGui::Text("%s", glm::to_string(parentEngine->scene_->visManager->data().activeEvent->center).c_str());
         ImGui::Text("Surface Normal:");
-        ImGui::Text("%s", glm::to_string(parentEngine->scene_->visLoader->data().activeEvent->surfaceNormal).c_str());
+        ImGui::Text("%s", glm::to_string(parentEngine->scene_->visManager->data().activeEvent->surfaceNormal).c_str());
         ImGui::Text("Connection Normal:");
         ImGui::Text("%s",
-                    glm::to_string(parentEngine->scene_->visLoader->data().activeEvent->connectionNormal).c_str());
+                    glm::to_string(parentEngine->scene_->visManager->data().activeEvent->connectionNormal).c_str());
       }
     }
     ImGui::EndChild();
@@ -187,7 +187,7 @@ void UserInterface::showSettingTable(int settingID) {
     // load setting from database if not already loaded
     if (loadedSettings.find(settingID)==loadedSettings.end()) {
       SettingsText setting;
-      parentEngine->scene_->visLoader->exportSettingText(settingID, setting);
+      parentEngine->scene_->visManager->exportSettingText(settingID, setting);
       loadedSettings.insert({settingID, setting});
     }
 
@@ -232,7 +232,7 @@ void UserInterface::showLeftAlignedWindow() {
 
       if (ImGui::BeginChild("Experiments", {0.f, height*0.55f}, false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
         if (experimentsNeedRefresh) {
-          parentEngine->scene_->visLoader->exportExperiments(experiments_);
+          parentEngine->scene_->visManager->exportExperiments(experiments_);
           experimentsNeedRefresh = false;
         }
         ImGui::Text("Experiments:");
@@ -240,7 +240,7 @@ void UserInterface::showLeftAlignedWindow() {
           ImGui::PushID(i);
 
           int experimentID = std::get<0>(experiments_.experimentSystemSettingIDs[i]);
-          bool isActiveExperiment = experimentID==parentEngine->scene_->visLoader->getActiveExperiment();
+          bool isActiveExperiment = experimentID==parentEngine->scene_->visManager->getActiveExperiment();
 
           if (!isActiveExperiment) ImGui::AlignTextToFramePadding();
           bool experimentExpanded = ImGui::TreeNode("Experiment",
@@ -251,7 +251,7 @@ void UserInterface::showLeftAlignedWindow() {
           if (!isActiveExperiment) {
             ImGui::SameLine();
             if (ImGui::SmallButton("load")) {
-              parentEngine->scene_->visLoader->load(experimentID);
+              parentEngine->scene_->visManager->load(experimentID);
             }
           }
 
@@ -332,7 +332,7 @@ void UserInterface::showDebugWindow() {
       ImGui::Checkbox("Enable Culling", &parentEngine->isCullingEnabled);
 #endif
 
-      if (parentEngine->scene_->visLoader) {
+      if (parentEngine->scene_->visManager) {
         ImGui::SliderInt("Movie Framerate:", &parentEngine->framerate_control_.movie_framerate_, 1, 300);
         ImGui::SliderFloat("MovieFrameIndex",
                            &parentEngine->framerate_control_.movie_frame_index_,
@@ -343,9 +343,38 @@ void UserInterface::showDebugWindow() {
         ImGui::Checkbox("Loop Simulation", &parentEngine->framerate_control_.isSimulationLooped);
         ImGui::Checkbox("Manual Movie Frame Control", &parentEngine->framerate_control_.manualFrameControl);
 
-        if (ImGui::Button("Remove Selected by Area Tag")) {
-          parentEngine->scene_->visLoader->removeSelectedByAreaTags();
+        if (ImGui::Button("Remove Selection")) {
+          parentEngine->scene_->visManager->removeSelectedByAreaTags();
         }
+        ImGui::SameLine();
+        if (ImGui::Button("Negate Selection")) {
+          parentEngine->scene_->visManager->negateSelectedByAreaTags();
+        }
+
+        if (ImGui::Button("Color by Element")) {
+          parentEngine->scene_->activateColorByElementNumber();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Color by BaseType")) {
+          parentEngine->scene_->activateColorByBaseType();
+        }
+
+        if (ImGui::Button("Tag Selection as Chemical (to DB)")) {
+          int chemicalID = parentEngine->scene_->visManager->getChemicalBaseTypeID();
+          int baseTypePropertyID = parentEngine->scene_->visManager->getBaseTypePropertyID();
+          int experimentID = parentEngine->scene_->visManager->getActiveExperiment();
+          parentEngine->scene_->visManager->makeSelectedAreaChemical();
+          parentEngine->scene_->visManager->updatePropertyForSelectedAtomsToDB(experimentID, baseTypePropertyID, chemicalID);
+        }
+
+        if (ImGui::Button("Tag Selection as Catalyst (to DB)")) {
+          int catalystID = parentEngine->scene_->visManager->getCatalystBaseTypeID();
+          int baseTypePropertyID = parentEngine->scene_->visManager->getBaseTypePropertyID();
+          int experimentID = parentEngine->scene_->visManager->getActiveExperiment();
+          parentEngine->scene_->visManager->makeSelectedAreaCatalyst();
+          parentEngine->scene_->visManager->updatePropertyForSelectedAtomsToDB(experimentID, baseTypePropertyID, catalystID);
+        }
+
 
 #ifdef RCC_GUI_DEV_MODE
         {
@@ -544,6 +573,8 @@ void UserInterface::showPreferencesWindow() {
       bLightMode = !bLightMode;
     }
     ImGui::ColorEdit3("Background Color", &parentEngine->clearColor[0]);
+    ImGui::ColorEdit3("Catalyst Color", &parentEngine->scene_->gConfig.catalyst_color_[0]);
+    ImGui::ColorEdit3("Chemical Color", &parentEngine->scene_->gConfig.chemical_color_[0]);
     ImGui::Separator();
 
     ImGui::Text("Camera and Movement");
@@ -584,11 +615,11 @@ void UserInterface::show() {
   ImGui::NewFrame();
 
   if (mainMenubarVisible) showMainMenubar();
-  if (parentEngine->scene_->visLoader) showSecondaryMenubar();
-  if (parentEngine->scene_->visLoader) showLeftAlignedWindow();
+  if (parentEngine->scene_->visManager) showSecondaryMenubar();
+  if (parentEngine->scene_->visManager) showLeftAlignedWindow();
 
-  if (parentEngine->scene_->visLoader) {
-    if (parentEngine->scene_->visLoader->data().activeEvent!=nullptr) showEventInfoWindow();
+  if (parentEngine->scene_->visManager) {
+    if (parentEngine->scene_->visManager->data().activeEvent!=nullptr) showEventInfoWindow();
   }
 
   if (materialParameterWindowVisible) showMaterialParameterWindow();
@@ -939,8 +970,8 @@ void UserInterface::showFileDialog(bool clicked) {
     if (ImGuiFileDialog::Instance()->IsOk()) {
       std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
       std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-      parentEngine->scene_->visLoader.reset(nullptr);
-      parentEngine->scene_->visLoader = std::make_unique<VisDataLoader>(filePathName, 1);
+      parentEngine->scene_->visManager.reset(nullptr);
+      parentEngine->scene_->visManager = std::make_unique<VisDataManager>(filePathName, 1);
     }
     // close
     ImGuiFileDialog::Instance()->Close();

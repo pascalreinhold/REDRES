@@ -34,13 +34,13 @@ bool sqlCheck(int result) {
 
 namespace rcc {
 
-VisDataLoader::VisDataLoader(const std::string &db_filepath, const int experiment_id) {
+VisDataManager::VisDataManager(const std::string &db_filepath, const int experiment_id) : db_filepath_(db_filepath) {
   std::cout << "sqlite version: " << sqlite3_version << "\n";
-  std::cout << "DB-Filepath: " << db_filepath << "\n";
-  if (sqlCheck(sqlite3_open_v2(db_filepath.c_str(), &db, SQLITE_OPEN_READONLY, nullptr))) {
-    std::cout << "successfully connected to " << db_filepath << std::endl;
+  std::cout << "DB-Filepath: " << db_filepath_ << "\n";
+  if (sqlCheck(sqlite3_open_v2(db_filepath_.c_str(), &db, SQLITE_OPEN_READWRITE , nullptr))) {
+    std::cout << "successfully connected to " << db_filepath_ << std::endl;
   } else {
-    std::cerr << "could not connect to" << db_filepath << std::endl;
+    std::cerr << "could not connect to" << db_filepath_ << std::endl;
   }
 
   auto start = std::chrono::steady_clock::now();
@@ -51,7 +51,7 @@ VisDataLoader::VisDataLoader(const std::string &db_filepath, const int experimen
             << elapsed_seconds.count()*1000.f << "ms\n";
 }
 
-void VisDataLoader::load(const int experiment_id) {
+void VisDataManager::load(const int experiment_id) {
   //get system and setting ids
   vis = std::make_unique<VisualizationData>();
   sqlite3_stmt *query;
@@ -67,7 +67,7 @@ void VisDataLoader::load(const int experiment_id) {
   RCC_PRINT_TIMING(loadUnitCell(systemID_);)
   RCC_PRINT_TIMING(loadElementInfos(systemID_);)
   RCC_PRINT_TIMING(loadAtomPositions(systemID_);)
-  RCC_PRINT_TIMING(loadAtomElementNumbersAndTags(systemID_);)
+  RCC_PRINT_TIMING(loadAtomElementNumbersAndTags(experimentID_);)
   RCC_PRINT_TIMING(loadBonds(settingID_);)
   RCC_PRINT_TIMING(loadHinuma(experiment_id);)
 }
@@ -85,15 +85,7 @@ static int sqlPositionReaderCallBack(void *data, int, char **columns, char **) {
   return 0;
 }
 
-void VisDataLoader::loadAtomElementNumbersAndTags(int systemID) {
-  // get first frame in system
-  sqlite3_stmt *frame_query;
-  sqlite3_prepare_v2(db, "SELECT MIN(id) FROM frames WHERE system_id = ?", -1, &frame_query, nullptr);
-  sqlite3_bind_int(frame_query, 1, systemID);
-  sqlite3_step(frame_query);
-  int frameID = sqlite3_column_int(frame_query, 0);
-  sqlite3_finalize(frame_query);
-
+void VisDataManager::loadAtomElementNumbersAndTags(int experimentID) {
   sqlite3_stmt *query;
 
   // get chemical and catalyst base_type_ids
@@ -103,14 +95,19 @@ void VisDataLoader::loadAtomElementNumbersAndTags(int systemID) {
   sqlite3_prepare_v2(db, "SELECT id FROM base_types WHERE name=\"catalyst\"", -1, &query, nullptr);
   sqlite3_step(query);
   int catalystID = sqlite3_column_int(query, 0);
+  sqlite3_prepare_v2(db, "SELECT id FROM properties WHERE name=\"init_base_type\"", -1, &query, nullptr);
+  sqlite3_step(query);
+  int propertyID = sqlite3_column_int(query, 0);
+
+
 
   sqlite3_prepare_v2(db,
-                     "SELECT atoms.id, atoms.atom_number, atoms.atomic_number, provenances.base_type_id FROM atoms INNER JOIN provenances on atoms.id = provenances.atom_id AND provenances.frame_id = ? WHERE system_id = ?",
+                     "SELECT atoms.id, atoms.atom_number, atoms.atomic_number, atom_tags.value FROM atoms INNER JOIN atom_tags on atoms.id = atom_tags.atom_id AND atom_tags.property_id = ? WHERE experiment_id = ?",
                      -1,
                      &query,
                      nullptr);
-  sqlite3_bind_int(query, 1, frameID);
-  sqlite3_bind_int(query, 2, systemID);
+  sqlite3_bind_int(query, 1, propertyID);
+  sqlite3_bind_int(query, 2, experimentID);
 
   vis->atomIDs = Eigen::Vector<uint32_t, Eigen::Dynamic>::Zero(vis->positions[0].rows());
   vis->tags = Eigen::Vector<uint32_t, Eigen::Dynamic>::Zero(vis->positions[0].rows());
@@ -130,7 +127,7 @@ void VisDataLoader::loadAtomElementNumbersAndTags(int systemID) {
   sqlite3_finalize(query);
 }
 
-void VisDataLoader::loadAtomPositions(int systemID) {
+void VisDataManager::loadAtomPositions(int systemID) {
   sqlite3_stmt *query;
 
   //get FrameIndices
@@ -190,7 +187,7 @@ static glm::vec3 convertHexStringToRGB(const char *hex_c_string) {
   return convertHexToRGB(std::stoul(hex_string, nullptr, 16));
 }
 
-void VisDataLoader::loadElementInfos(int systemID) {
+void VisDataManager::loadElementInfos(int systemID) {
   // load the element numbers for the system
   sqlite3_stmt *query;
   sqlite3_prepare_v2(db,
@@ -226,7 +223,7 @@ void VisDataLoader::loadElementInfos(int systemID) {
   sqlite3_finalize(elmInfoQuery);
 }
 
-void VisDataLoader::loadHinuma(int experimentID) {
+void VisDataManager::loadHinuma(int experimentID) {
   sqlite3_stmt *query;
 
   sqlite3_prepare_v2(db, "SELECT id FROM hinuma WHERE experiment_id = ?", -1, &query, nullptr);
@@ -261,7 +258,7 @@ void VisDataLoader::loadHinuma(int experimentID) {
   sqlite3_finalize(query);
 }
 
-void VisDataLoader::loadBonds(int settingID) {
+void VisDataManager::loadBonds(int settingID) {
   sqlite3_stmt *query;
   sqlite3_prepare_v2(db,
                      "SELECT value FROM setting_parameters WHERE setting_id = ? AND parameter_id = (SELECT id FROM parameters WHERE name = \"fudge_factor\")",
@@ -277,7 +274,7 @@ void VisDataLoader::loadBonds(int settingID) {
   sqlite3_finalize(query);
 }
 
-void VisDataLoader::exportSettingText(int settingID, SettingsText &settings) {
+void VisDataManager::exportSettingText(int settingID, SettingsText &settings) {
   sqlite3_stmt *query;
   sqlite3_prepare_v2(db,
                      "SELECT name, value, description FROM setting_parameters INNER JOIN parameters ON setting_parameters.parameter_id = parameters.id WHERE setting_id = ? ORDER BY parameter_id",
@@ -300,7 +297,7 @@ void VisDataLoader::exportSettingText(int settingID, SettingsText &settings) {
   sqlite3_finalize(query);
 }
 
-void VisDataLoader::exportEvents(int experimentID, EventsText &events) {
+void VisDataManager::exportEvents(int experimentID, EventsText &events) {
   sqlite3_stmt *queryEvents;
   sqlite3_prepare_v2(db,
                      "SELECT events.id, frame_id, event_types.name, event_types.description FROM events INNER JOIN event_types ON event_type_id = event_types.id  WHERE experiment_id = ? ORDER BY frame_id",
@@ -320,7 +317,7 @@ void VisDataLoader::exportEvents(int experimentID, EventsText &events) {
   sqlite3_finalize(queryEvents);
 }
 
-void VisDataLoader::exportExperiments(Experiments &experiments) {
+void VisDataManager::exportExperiments(Experiments &experiments) {
   sqlite3_stmt *query;
   sqlite3_prepare_v2(db, "SELECT id, system_id, setting_id FROM experiments", -1, &query, nullptr);
 
@@ -331,51 +328,43 @@ void VisDataLoader::exportExperiments(Experiments &experiments) {
   sqlite3_finalize(query);
 }
 
-void VisDataLoader::loadUnitCell(int systemID) {
+void VisDataManager::loadUnitCell(int systemID) {
   sqlite3_stmt *query;
   sqlite3_prepare_v2(db,
-                     "SELECT len_x, len_y, len_z, angle_x, angle_y, angle_z, pbc_x, pbc_y, pbc_z FROM systems WHERE id = ?",
+                     "SELECT cell_1_x, cell_2_x, cell_3_x, cell_1_y, cell_2_y, cell_3_y, cell_1_z, cell_2_z, cell_3_z, pbc_x, pbc_y, pbc_z FROM systems WHERE id = ?",
                      -1,
                      &query,
                      nullptr);
   sqlite3_bind_int(query, 1, systemID);
   sqlite3_step(query);
-  float xl, yl, zl, xa, ya, za; // angles and lengths
-  xl = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 0)), nullptr);
-  yl = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 1)), nullptr);
-  zl = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 2)), nullptr);
-  xa = glm::radians(strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 3)), nullptr));
-  ya = glm::radians(strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 4)), nullptr));
-  za = glm::radians(strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 5)), nullptr));
 
-  vis->unitCellGLM[0] = glm::vec3{xl, 0.f, 0.f};
-  vis->unitCellGLM[1] = yl * normalize(glm::vec3(glm::rotate(za, glm::vec3{0.f, 0.f, 1.f})*glm::vec4(vis->unitCellGLM[0], 0)));
-  vis->unitCellGLM[2] = glm::vec3{0.f, 0.f, zl};
-  
+  vis->unitCellEigen(0,0) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 0)), nullptr);
+  vis->unitCellEigen(0,1) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 1)), nullptr);
+  vis->unitCellEigen(0,2) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 2)), nullptr);
+  vis->unitCellEigen(1,0) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 3)), nullptr);
+  vis->unitCellEigen(1,1) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 4)), nullptr);
+  vis->unitCellEigen(1,2) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 5)), nullptr);
+  vis->unitCellEigen(2,0) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 6)), nullptr);
+  vis->unitCellEigen(2,1) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 7)), nullptr);
+  vis->unitCellEigen(2,2) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 8)), nullptr);
+
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      vis->unitCellEigen(i, j) = vis->unitCellGLM[i][j];
+       vis->unitCellGLM[i][j] = vis->unitCellEigen(i, j);
     }
   }
 
-  vis->pbcBondVector[0] = 1.f;//static_cast<float>(sqlite3_column_int(query, 6));
-  vis->pbcBondVector[1] = 1.f;//static_cast<float>(sqlite3_column_int(query, 7));
-  vis->pbcBondVector[2] = 1.f;//static_cast<float>(sqlite3_column_int(query, 8));
+  vis->pbcBondVector[0] = static_cast<float>(sqlite3_column_int(query, 9));
+  vis->pbcBondVector[1] = static_cast<float>(sqlite3_column_int(query, 10));
+  vis->pbcBondVector[2] = static_cast<float>(sqlite3_column_int(query, 11));
+
   sqlite3_finalize(query);
 }
 
-void VisDataLoader::loadActiveEvent(int eventID) {
-  sqlite3_stmt *query, *baseTypeQuery;
+void VisDataManager::loadActiveEvent(int eventID) {
+  sqlite3_stmt *query;
   vis->activeEvent = std::make_unique<Event>();
   vis->activeEvent->eventID = eventID;
-
-  sqlite3_prepare_v2(db, "SELECT id FROM base_types WHERE name=\"chemical\"", -1, &query, nullptr);
-  sqlite3_step(query);
-  int chemicalID = sqlite3_column_int(query, 0);
-
-  sqlite3_prepare_v2(db, "SELECT id FROM base_types WHERE name=\"catalyst\"", -1, &query, nullptr);
-  sqlite3_step(query);
-  int catalystID = sqlite3_column_int(query, 0);
 
   sqlite3_prepare_v2(db,
                      "SELECT frame_number, frames.id FROM frames INNER JOIN events ON frames.id = events.frame_id WHERE events.id = ?",
@@ -388,45 +377,32 @@ void VisDataLoader::loadActiveEvent(int eventID) {
   const int frameID = sqlite3_column_int(query, 1);
 
   sqlite3_prepare_v2(db,
-                     "SELECT atom_number,event_atoms.atom_id FROM event_atoms INNER JOIN atoms on event_atoms.atom_id = atoms.id WHERE event_id = ?",
+                     "SELECT atom_number FROM event_atoms INNER JOIN atoms on event_atoms.atom_id = atoms.id WHERE event_id = ?",
                      -1,
                      &query,
                      nullptr);
   sqlite3_bind_int(query, 1, eventID);
 
-  sqlite3_prepare_v2(db,
-                     "SELECT base_type_id FROM provenances WHERE atom_id = ? AND frame_id = ?",
-                     -1,
-                     &baseTypeQuery,
-                     nullptr);
 
   while (sqlite3_step(query)!=SQLITE_DONE) {
     int atomNumber = sqlite3_column_int(query, 0);
-    int atomID = sqlite3_column_int(query, 1);
 
-    sqlite3_bind_int(baseTypeQuery, 1, atomID);
-    sqlite3_bind_int(baseTypeQuery, 2, frameID);
-
-    sqlite3_step(baseTypeQuery);
-    int baseTypeID = sqlite3_column_int(baseTypeQuery, 0);
-
-    if (catalystID==baseTypeID) {
+    if ((vis->tags[atomNumber] & Tags::eCatalyst) == Tags::eCatalyst) {
       vis->activeEvent->catalyst_atom_numbers.emplace_back(atomNumber);
       glm::vec3 atomPos{vis->positions[vis->activeEvent->frameNumber](atomNumber, 0),
                         vis->positions[vis->activeEvent->frameNumber](atomNumber, 1),
                         vis->positions[vis->activeEvent->frameNumber](atomNumber, 2)};
       vis->activeEvent->catalyst_positions.emplace_back(atomPos);
 
-    } else if (chemicalID==baseTypeID) {
+    } else if  ((vis->tags[atomNumber] & Tags::eChemical) == Tags::eChemical) {
       vis->activeEvent->chemical_atom_numbers.emplace_back(atomNumber);
       glm::vec3 atomPos{vis->positions[vis->activeEvent->frameNumber](atomNumber, 0),
                         vis->positions[vis->activeEvent->frameNumber](atomNumber, 1),
                         vis->positions[vis->activeEvent->frameNumber](atomNumber, 2)};
       vis->activeEvent->chemical_positions.emplace_back(atomPos);
     } else {
-      std::cout << "event atom is neither" << std::endl;
+      std::cout << "event atom is neither chemical or catalyst?" << std::endl;
     }
-    sqlite3_reset(baseTypeQuery);
   }
 
   vis->activeEvent->center = glm::vec3{0.0f};
@@ -452,12 +428,11 @@ void VisDataLoader::loadActiveEvent(int eventID) {
       - vis->positions[vis->activeEvent->frameNumber].row(vis->activeEvent->chemical_atom_numbers[0]);
   vis->activeEvent->connectionNormal = glm::normalize(glm::vec3{n(0), n(1), n(2)});
 
-  sqlite3_finalize(baseTypeQuery);
   sqlite3_finalize(query);
 
 }
 
-void VisDataLoader::addEventTags(const Event &event) {
+void VisDataManager::addEventTags(const Event &event) {
   for (int atom_number : event.chemical_atom_numbers) {
     vis->tags(atom_number) |= Tags::eHighlighted;
   }
@@ -466,7 +441,7 @@ void VisDataLoader::addEventTags(const Event &event) {
   }
 }
 
-void VisDataLoader::removeEventTags(const Event &event) {
+void VisDataManager::removeEventTags(const Event &event) {
   for (int atom_number : event.chemical_atom_numbers) {
     vis->tags(atom_number) &= (~Tags::eHighlighted);
   }
@@ -475,19 +450,99 @@ void VisDataLoader::removeEventTags(const Event &event) {
   }
 }
 
-void VisDataLoader::unloadActiveEvent() {
+void VisDataManager::unloadActiveEvent() {
   vis->activeEvent.reset(nullptr);
 }
 
-Eigen::Vector<uint32_t, Eigen::Dynamic> &VisDataLoader::getTagsRef() {
+Eigen::Vector<uint32_t, Eigen::Dynamic> &VisDataManager::getTagsRef() {
   return vis->tags;
 }
 
-void VisDataLoader::removeSelectedByAreaTags() {
+void VisDataManager::removeSelectedByAreaTags() {
   for (uint32_t &tag : vis->tags) {
     tag &= (~Tags::eSelectedByArea);
   }
+}
 
+void VisDataManager::makeSelectedAreaChemical() {
+  for (uint32_t &tag : vis->tags) {
+    if ((tag & Tags::eSelectedByArea) == Tags::eSelectedByArea) {
+      tag |= Tags::eChemical;
+      tag &= (~Tags::eCatalyst);
+    }
+  }
+}
+
+void VisDataManager::makeSelectedAreaCatalyst() {
+  for (uint32_t &tag : vis->tags) {
+    if ((tag & Tags::eSelectedByArea) == Tags::eSelectedByArea) {
+      tag |= Tags::eCatalyst;
+      tag &= (~Tags::eChemical);
+    }
+  }
+}
+
+
+int VisDataManager::getChemicalBaseTypeID() {
+  sqlite3_stmt *query;
+  sqlite3_prepare_v2(db, "SELECT id FROM base_types WHERE name=\"chemical\"", -1, &query, nullptr);
+  sqlite3_step(query);
+  int baseTypeID = sqlite3_column_int(query, 0);
+  sqlite3_finalize(query);
+  return baseTypeID;
+}
+
+int VisDataManager::getCatalystBaseTypeID() {
+  sqlite3_stmt *query;
+  sqlite3_prepare_v2(db, "SELECT id FROM base_types WHERE name=\"catalyst\"", -1, &query, nullptr);
+  sqlite3_step(query);
+  int baseTypeID = sqlite3_column_int(query, 0);
+  sqlite3_finalize(query);
+  return baseTypeID;
+}
+
+int VisDataManager::getBaseTypePropertyID() const{
+    sqlite3_stmt *query;
+    sqlite3_prepare_v2(db, "SELECT id FROM properties WHERE name=\"init_base_type\"", -1, &query, nullptr);
+    sqlite3_step(query);
+    int baseTypePropertyID = sqlite3_column_int(query, 0);
+    sqlite3_finalize(query);
+    return baseTypePropertyID;
+}
+
+void VisDataManager::updatePropertyForSelectedAtomsToDB(int experimentID, int propertyID, int value) {
+
+  sqlite3_stmt *transaction;
+  sqlite3_prepare_v2(db, "BEGIN TRANSACTION", -1, &transaction, nullptr);
+  sqlite3_step(transaction);
+
+  sqlite3_stmt *query;
+  sqlite3_prepare_v2(db, "UPDATE atom_tags"
+                         " SET value = ? WHERE experiment_id = ? AND property_id = ?"
+                         " AND atom_id = ?", -1, &query, nullptr);
+
+
+  for (int i = 0; i < vis->atomIDs.size(); i++) {
+    if(vis->tags[i] & Tags::eSelectedByArea){
+      sqlite3_bind_int(query, 1, value);
+      sqlite3_bind_int(query, 2, experimentID);
+      sqlite3_bind_int(query, 3, propertyID);
+      sqlite3_bind_int(query, 4, static_cast<int>(vis->atomIDs[i]));
+      sqlite3_step(query);
+      sqlite3_reset(query);
+    }
+  }
+
+  sqlite3_prepare_v2(db, "COMMIT TRANSACTION", -1, &transaction, nullptr);
+
+  sqlite3_finalize(query);
+  sqlite3_finalize(transaction);
+}
+
+void VisDataManager::negateSelectedByAreaTags() {
+  for (uint32_t &tag : vis->tags) {
+    tag ^= Tags::eSelectedByArea;
+  }
 }
 
 } // namespace rcc

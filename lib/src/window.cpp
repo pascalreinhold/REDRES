@@ -11,11 +11,16 @@
 
 namespace rcc {
 
-Window::Window(int width, int height, std::string windowName) :
+Window::Window(int width, int height, const std::string& windowName) :
     width_{width},
     height_{height},
     windowName_{windowName} {
   initWindow();
+}
+
+void Window::setWindowName(const std::string& new_window_name) {
+  windowName_ = new_window_name;
+  glfwSetWindowTitle(glfwWindow_, windowName_.c_str());
 }
 
 Window::~Window() {

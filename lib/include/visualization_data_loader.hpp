@@ -32,27 +32,37 @@ struct SqlPositionReaderHelper {
   std::vector<Eigen::MatrixX3f> *allPositions = nullptr;
 };
 
-class VisDataLoader {
+class VisDataManager {
  public:
-  VisDataLoader(const std::string &db_filepath, int experiment_id);
+  VisDataManager(const std::string &db_filepath, int experiment_id);
   //TODO: delete copy and assignment op's
+  void updatePropertyForSelectedAtomsToDB(int experimentID, int propertyID, int value);
+  int getCatalystBaseTypeID();
+  int getChemicalBaseTypeID();
   void exportExperiments(Experiments &experiments);
   void exportSettingText(int settingID, SettingsText &settings);
   void exportEvents(int experimentID, EventsText &events);
 
   void loadActiveEvent(int eventID);
   void unloadActiveEvent();
-
-  const VisualizationData &data() { return *vis; }
   void load(int experiment_id);
-  int getActiveExperiment() { return experimentID_; }
-  int getActiveSystem() { return systemID_; }
-  int getActiveSetting() { return settingID_; }
+
+
+  [[nodiscard]] const VisualizationData &data() const { return *vis; }
+  [[nodiscard]] int getActiveExperiment() const { return experimentID_; }
+  [[nodiscard]] int getActiveSystem() const { return systemID_; }
+  [[nodiscard]] int getActiveSetting() const { return settingID_; }
+  [[nodiscard]] const std::string &getDBFilepath() const { return db_filepath_; }
+  [[nodiscard]] int getBaseTypePropertyID() const;
+
 
   Eigen::Vector<uint32_t, Eigen::Dynamic> &getTagsRef();
   void addEventTags(const Event &event);
+  void negateSelectedByAreaTags();
   void removeEventTags(const Event &event);
   void removeSelectedByAreaTags();
+  void makeSelectedAreaChemical();
+  void makeSelectedAreaCatalyst();
 
  private:
   std::unique_ptr<VisualizationData> vis;
@@ -60,12 +70,13 @@ class VisDataLoader {
   void loadElementInfos(int systemID);
   void loadAtomPositions(int systemID);
   void loadHinuma(int experimentID);
-  void loadAtomElementNumbersAndTags(int systemID);
+  void loadAtomElementNumbersAndTags(int experimentID);
 
   void loadBonds(int settingID);
 
   int experimentID_, systemID_, settingID_;
   sqlite3 *db = nullptr;
+  std::string db_filepath_;
 };
 
 } // namespace rcc

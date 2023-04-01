@@ -31,6 +31,7 @@
     "HinumaThickness": 1.0,
     "IsIsometric": false,
     "UseLightMode": true,
+    "MovieFrameRate": 30,
     "IsometricDepth": 200.0,
     "IsometricHeight": 28.550010681152344,
     "MaxCellCount": 27,
@@ -48,5 +49,17 @@
     "WindowName": "Render Engine for Computational Chemistry",
     "WindowWidth": 1920,
     "ZoomSpeed": 1.0499999523162842,
-    "DragSpeed": 5.0
+    "DragSpeed": 5.0,
+    "ChemicalColor" : [
+        0.0,
+        1.0,
+        0.0,
+        1.0
+    ],
+    "CatalystColor" : [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+    ]
 }

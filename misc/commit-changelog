@@ -1,0 +1,13 @@
+Atom Base Types:
+1.Added buttons to toggle coloring atoms by element or by atom base type
+    ->Color for base types is can be set in the preferences and is saved across sessions
+2.Function to negate the selected by area tag
+3.Function to update the tags of all atoms in an experiment of a certain property_id to a specified value in the database
+  ->Added two buttons to tag selected atoms as either catalyst or chemical and immediately update the database via an SQL transaction (seems quite fast (: )
+4.Clamped the zoom for the isometric view so that you can not invert the view by zooming in too far
+5.Remove Atom Selection on pressing Escape
+
+Misc:
+7.The Window Title Bar now displays the filepath of the current database
+8.Unit Cell is now read from the new SQL parameters is the system table
+9.Movie Frame Rate will now be saved across sessions

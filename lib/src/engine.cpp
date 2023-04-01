@@ -62,6 +62,7 @@ Engine::Engine(const char *db_filepath, const char *asset_dir_path) : db_filepat
 
   clearColor = getConfig()["ClearColor"].get<std::array<float, 4>>();
   max_cell_count_ = getConfig()["MaxCellCount"].get<int>();
+  framerate_control_.movie_framerate_ = Engine::getConfig()["MovieFrameRate"].get<int>();
 
   //window creation
   std::string windowName = getConfig()["WindowName"].get<std::string>();
@@ -172,11 +173,11 @@ void Engine::initCamera() {
 }
 
 void Engine::processMousePickingBuffer() {
-  if (!bReadMousePickingBuffer_ || !scene_->visLoader) return;
+  if (!bReadMousePickingBuffer_ || !scene_->visManager) return;
 
   // make sure an atom is selected
   if ((selected_object_index_!=-1) && (selected_object_index_ < (*scene_)["Atom"].MaxCount())) {
-    scene_->visLoader->getTagsRef()(selected_object_index_) &= (~Tags::eSelectedByClick);
+    scene_->visManager->getTagsRef()(selected_object_index_) &= (~Tags::eSelectedByClick);
   }
 
   selected_object_index_ = -1;
@@ -189,7 +190,7 @@ void Engine::processMousePickingBuffer() {
 
   // make sure an atom is selected
   if ((selected_object_index_!=-1) && (selected_object_index_ < (*scene_)["Atom"].MaxCount())) {
-    scene_->visLoader->getTagsRef()(selected_object_index_) |= Tags::eSelectedByClick;
+    scene_->visManager->getTagsRef()(selected_object_index_) |= Tags::eSelectedByClick;
   }
 
 }
@@ -236,7 +237,7 @@ void Engine::run() {
                              sizeof(uint32_t)*RCC_MOUSE_BUCKET_COUNT,
                              mouse_buckets);
 
-    if (scene_->visLoader) {
+    if (scene_->visManager) {
       // update selected index variable
       processMousePickingBuffer();
       processMouseDrag();
@@ -253,6 +254,17 @@ void Engine::run() {
     }
 
     ui->show();
+    if(scene_->visManager) {
+      if(window_->windowName() != (getConfig()["WindowName"].get<std::string>()) + " - " + scene_->visManager->getDBFilepath()) {
+        window_->setWindowName((getConfig()["WindowName"].get<std::string>()) + " - " + scene_->visManager->getDBFilepath());
+        //std::cout << window_->windowName() << std::endl;
+      }
+    } else {
+      if(window_->windowName() != (getConfig()["WindowName"].get<std::string>())) {
+        window_->setWindowName((getConfig()["WindowName"].get<std::string>()));
+        //std::cout << window_->windowName() << std::endl;
+      }
+    }
     render();
     framerate_control_.frame_number_++;
   }
@@ -394,11 +406,11 @@ void Engine::render() {
   if (fence_wait_result!=vk::Result::eSuccess) abort();
   logical_device_.resetFences(getCurrentFrame().render_fence);
 
-  if (scene_->visLoader) {
+  if (scene_->visManager) {
     //reset IndirectDrawClearBuffer if we have a new Experiment
     static int currExperimentID = -1;
-    if (currExperimentID!=scene_->visLoader->getActiveExperiment()) {
-      currExperimentID = scene_->visLoader->getActiveExperiment();
+    if (currExperimentID!=scene_->visManager->getActiveExperiment()) {
+      currExperimentID = scene_->visManager->getActiveExperiment();
       loadMeshes();
       writeClearDrawCallBuffer();
     }
@@ -415,13 +427,13 @@ void Engine::render() {
   vk::CommandBufferBeginInfo cmd_begin_info{};
   cmd.begin(cmd_begin_info);
 
-  if (scene_->visLoader) {
+  if (scene_->visManager) {
     resetDrawData(cmd, clear_draw_call_buffer_, getCurrentFrame().draw_call_buffer, sizeof(GPUDrawCalls));
     runCullComputeShader(cmd);
   }
 
   beginRenderPass(cmd, swapchainIndex);
-  if (scene_->visLoader) draw(cmd);
+  if (scene_->visManager) draw(cmd);
   ui->writeDrawDataToCmdBuffer(cmd);
   cmd.endRenderPass();
   cmd.end();
@@ -1065,14 +1077,14 @@ void Engine::toggleCameraMode() {
 }
 
 glm::vec3 Engine::getCenterCoords() {
-  if (!scene_->visLoader) return glm::vec3{0.f};
-  if (scene_->visLoader->data().activeEvent) return scene_->visLoader->data().activeEvent->center;
+  if (!scene_->visManager) return glm::vec3{0.f};
+  if (scene_->visManager->data().activeEvent) return scene_->visManager->data().activeEvent->center;
 
   int xN = scene_->gConfig.xCellCount;
   int yN = scene_->gConfig.yCellCount;
   int zN = scene_->gConfig.zCellCount;
   glm::vec3 center{0.f};
-  glm::mat3 cellT = glm::transpose(scene_->visLoader->data().unitCellGLM);
+  glm::mat3 cellT = glm::transpose(scene_->visManager->data().unitCellGLM);
   center[0] = (xN%2!=0) ? glm::dot(cellT[0], glm::vec3(0.5f)) : 0.f;
   center[1] = (yN%2!=0) ? glm::dot(cellT[1], glm::vec3(0.5f)) : 0.f;
   center[2] = (zN%2!=0) ? glm::dot(cellT[2], glm::vec3(0.5f)) : 0.f;
@@ -1110,6 +1122,7 @@ void Engine::scrollCallback(double y_offset) {
   if (camera_->is_isometric) {
     auto &isometric_height = camera_->isometric_view_settings_.isometric_height;
     isometric_height -= static_cast<float>(y_offset)*zoom_speed;
+    isometric_height = std::max(isometric_height, 0.0f);
   } else {
     auto &fovY = camera_->perspective_view_settings_.perspective_fovy;
     fovY -= static_cast<float>(y_offset)*zoom_speed;
@@ -1122,6 +1135,7 @@ void glfw_key_callback(GLFWwindow * /*window*/, int key, int scancode, int actio
 
 void Engine::keyCallback(int key, int /*scancode*/, int action, int /*mods*/) {
   if (ui->wantKeyboard()) return;
+  if (key==GLFW_KEY_ESCAPE && action==GLFW_PRESS) scene_->visManager->removeSelectedByAreaTags();
   if (key==GLFW_KEY_SPACE && action==GLFW_PRESS) toggleFrameControlMode();
   if (key==GLFW_KEY_TAB && action==GLFW_PRESS) toggleCameraMode();
 }
@@ -1191,12 +1205,12 @@ void Engine::writeCullBuffer() {
   cullData.isCullingEnabled = isCullingEnabled;
 
   //cylinder culling
-  if (scene_->visLoader->data().activeEvent!=nullptr) {
+  if (scene_->visManager->data().activeEvent!=nullptr) {
     cullData.cullCylinder = scene_->eventViewerSettings.enableCylinderCulling;
-    cullData.cylinderCenter = glm::vec4(scene_->visLoader->data().activeEvent->center, 0);
+    cullData.cylinderCenter = glm::vec4(scene_->visManager->data().activeEvent->center, 0);
     cullData.cylinderNormal =
-        glm::vec4(scene_->eventViewerSettings.surfaceNormals ? scene_->visLoader->data().activeEvent->surfaceNormal
-                                                             : scene_->visLoader->data().activeEvent->connectionNormal,
+        glm::vec4(scene_->eventViewerSettings.surfaceNormals ? scene_->visManager->data().activeEvent->surfaceNormal
+                                                             : scene_->visManager->data().activeEvent->connectionNormal,
                   0);
     cullData.cylinderLength = scene_->eventViewerSettings.cylinderLength;
     cullData.cylinderRadiusSquared =
@@ -1383,18 +1397,18 @@ void Engine::writeIndirectDispatchBuffer() {
 
 void Engine::enterEventMode(int eventID) {
   //clean up old event if there is one
-  if (scene_->visLoader->data().activeEvent) leaveEventMode();
-  scene_->visLoader->loadActiveEvent(eventID);
+  if (scene_->visManager->data().activeEvent) leaveEventMode();
+  scene_->visManager->loadActiveEvent(eventID);
   (*scene_)["UnitCell"].shown = false;
   (*scene_)["Cylinder"].shown = true;
-  scene_->visLoader->addEventTags(*scene_->visLoader->data().activeEvent);
+  scene_->visManager->addEventTags(*scene_->visManager->data().activeEvent);
   GetOptimalCameraPerspective();
 }
 
 void Engine::GetOptimalCameraPerspective() {
   using std::cout, std::endl;
   const uint32_t spacingFrameCount = 80;
-  const Event &event = *scene_->visLoader->data().activeEvent;
+  const Event &event = *scene_->visManager->data().activeEvent;
   uint32_t firstFrameNumber =
       std::clamp(static_cast<uint32_t>(event.frameNumber - spacingFrameCount), 0U, scene_->MovieFrameCount() - 1);
   uint32_t lastFrameNumber =
@@ -1419,9 +1433,9 @@ void Engine::GetOptimalCameraPerspective() {
   for (uint32_t i = firstFrameNumber; i <= lastFrameNumber; i++) {
     for (uint32_t j = 0; j < event.chemical_positions.size(); j++) {
       uint32_t index = (i - firstFrameNumber)*event.chemical_positions.size() + j;
-      positions(index, 0) = scene_->visLoader->data().positions[i](event.chemical_atom_numbers[j], 0);
-      positions(index, 1) = scene_->visLoader->data().positions[i](event.chemical_atom_numbers[j], 1);
-      positions(index, 2) = scene_->visLoader->data().positions[i](event.chemical_atom_numbers[j], 2);
+      positions(index, 0) = scene_->visManager->data().positions[i](event.chemical_atom_numbers[j], 0);
+      positions(index, 1) = scene_->visManager->data().positions[i](event.chemical_atom_numbers[j], 1);
+      positions(index, 2) = scene_->visManager->data().positions[i](event.chemical_atom_numbers[j], 2);
       positions(index, 3) = 1;
     }
   }
@@ -1451,37 +1465,43 @@ void Engine::GetOptimalCameraPerspective() {
 }
 
 void Engine::leaveEventMode() {
-  scene_->visLoader->removeEventTags(*scene_->visLoader->data().activeEvent);
+  scene_->visManager->removeEventTags(*scene_->visManager->data().activeEvent);
   (*scene_)["UnitCell"].shown = true;
   (*scene_)["Cylinder"].shown = false;
-  scene_->visLoader->unloadActiveEvent();
+  scene_->visManager->unloadActiveEvent();
 }
 
 void Engine::DumpSettingsJson(const std::string &filepath) {
-  //update the json values before dumbing
-  Engine::getConfig()["DragSpeed"] = camera_->drag_speed_;
-  Engine::getConfig()["UseIsometric"] = camera_->is_isometric;
-  Engine::getConfig()["WindowWidth"] = window_->width();
-  Engine::getConfig()["WindowHeight"] = window_->height();
-  Engine::getConfig()["NearPlane"] = camera_->perspective_view_settings_.near;
-  Engine::getConfig()["FarPlane"] = camera_->perspective_view_settings_.far;
-  Engine::getConfig()["FOVY"] = camera_->perspective_view_settings_.perspective_fovy;
-  Engine::getConfig()["IsIsometric"] = camera_->is_isometric;
-  Engine::getConfig()["IsometricHeight"] = camera_->isometric_view_settings_.isometric_height;
-  Engine::getConfig()["MovementSpeed"] = camera_->perspective_view_settings_.move_speed;
-  Engine::getConfig()["TurnSpeed"] = camera_->perspective_view_settings_.turn_speed;
-  Engine::getConfig()["ZoomSpeed"] = camera_->isometric_view_settings_.zoom_speed;
-  Engine::getConfig()["IsometricDepth"] = camera_->isometric_view_settings_.isometric_depth;
-  Engine::getConfig()["AtomSize"] = scene_->gConfig.atomSize;
-  Engine::getConfig()["BondLength"] = scene_->gConfig.bondLength;
-  Engine::getConfig()["BondThickness"] = scene_->gConfig.bondThickness;
-  Engine::getConfig()["HinumaLength"] = scene_->gConfig.hinumaVectorLength;
-  Engine::getConfig()["HinumaThickness"] = scene_->gConfig.hinumaVectorThickness;
-  Engine::getConfig()["BoxCountX"] = scene_->gConfig.xCellCount;
-  Engine::getConfig()["BoxCountY"] = scene_->gConfig.yCellCount;
-  Engine::getConfig()["BoxCountZ"] = scene_->gConfig.zCellCount;
-  Engine::getConfig()["ClearColor"] = clearColor;
-  Engine::getConfig()["MaxCellCount"] = max_cell_count_;
+  //update the json values before dumping
+  glm::vec4& col = scene_->gConfig.catalyst_color_;
+  getConfig()["CatalystColor"] = std::array<float,4>{col.r, col.g, col.b, col.a};
+  col = scene_->gConfig.chemical_color_;
+  getConfig()["ChemicalColor"] = std::array<float,4>{col.r, col.g, col.b, col.a};
+  getConfig()["MovieFrameRate"] = framerate_control_.movie_framerate_;
+  getConfig()["UseLightMode"] = ui->bLightMode;
+  getConfig()["DragSpeed"] = camera_->drag_speed_;
+  getConfig()["UseIsometric"] = camera_->is_isometric;
+  getConfig()["WindowWidth"] = window_->width();
+  getConfig()["WindowHeight"] = window_->height();
+  getConfig()["NearPlane"] = camera_->perspective_view_settings_.near;
+  getConfig()["FarPlane"] = camera_->perspective_view_settings_.far;
+  getConfig()["FOVY"] = camera_->perspective_view_settings_.perspective_fovy;
+  getConfig()["IsIsometric"] = camera_->is_isometric;
+  getConfig()["IsometricHeight"] = camera_->isometric_view_settings_.isometric_height;
+  getConfig()["MovementSpeed"] = camera_->perspective_view_settings_.move_speed;
+  getConfig()["TurnSpeed"] = camera_->perspective_view_settings_.turn_speed;
+  getConfig()["ZoomSpeed"] = camera_->isometric_view_settings_.zoom_speed;
+  getConfig()["IsometricDepth"] = camera_->isometric_view_settings_.isometric_depth;
+  getConfig()["AtomSize"] = scene_->gConfig.atomSize;
+  getConfig()["BondLength"] = scene_->gConfig.bondLength;
+  getConfig()["BondThickness"] = scene_->gConfig.bondThickness;
+  getConfig()["HinumaLength"] = scene_->gConfig.hinumaVectorLength;
+  getConfig()["HinumaThickness"] = scene_->gConfig.hinumaVectorThickness;
+  getConfig()["BoxCountX"] = scene_->gConfig.xCellCount;
+  getConfig()["BoxCountY"] = scene_->gConfig.yCellCount;
+  getConfig()["BoxCountZ"] = scene_->gConfig.zCellCount;
+  getConfig()["ClearColor"] = clearColor;
+  getConfig()["MaxCellCount"] = max_cell_count_;
 
   //dumb
   std::ofstream out_file(filepath);
@@ -1496,7 +1516,7 @@ glm::vec2 mapScreenToIso(glm::vec2 coords, float width, float height, float iso_
 }
 
 void Engine::selectAtomsWithRect(glm::vec2 start, glm::vec2 end, int frame_index) {
-  if (!scene_->visLoader) return;
+  if (!scene_->visManager) return;
   float iso_height = camera_->isometric_view_settings_.isometric_height;
   float iso_width = iso_height*static_cast<float>(window_->aspect());
   auto mapped1 = mapScreenToIso(start,
@@ -1529,14 +1549,14 @@ void Engine::selectAtomsWithRect(glm::vec2 start, glm::vec2 end, int frame_index
   frustumNormalEquations[5] = normalizePlane(projT[3] - projT[2]);
 
   // cpu culling :(((
-  const Eigen::MatrixX3f &positions = scene_->visLoader->data().positions[frame_index];
+  const Eigen::MatrixX3f &positions = scene_->visManager->data().positions[frame_index];
   GPUOffsets mic_offsets = getOffsets();
 
-  for (int i = 0; i < scene_->visLoader->data().positions[frame_index].rows(); i++) {
+  for (int i = 0; i < scene_->visManager->data().positions[frame_index].rows(); i++) {
     // W = World Space, C = Camera Space
     glm::vec4 position_world = glm::vec4(positions(i, 0), positions(i, 1), positions(i, 2), 1);
 
-    float element_radius = scene_->visLoader->data().elementInfos.find(scene_->visLoader->data().tags(i) & 255)->second.atomRadius;
+    float element_radius = scene_->visManager->data().elementInfos.find(scene_->visManager->data().tags(i) & 255)->second.atomRadius;
     float radius = scene_->meshes->meshInfos[meshID::eAtom].radius*element_radius*scene_->gConfig.atomSize;
 
     bool insideRect;
@@ -1552,7 +1572,7 @@ void Engine::selectAtomsWithRect(glm::vec2 start, glm::vec2 end, int frame_index
     }
 
     if (insideRect) {
-      scene_->visLoader->getTagsRef()(i) |= Tags::eSelectedByArea;
+      scene_->visManager->getTagsRef()(i) |= Tags::eSelectedByArea;
     }
   }
 }
