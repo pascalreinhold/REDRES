@@ -1,6 +1,6 @@
 TODO:
     -> Swapchain Validation Error Message
-    -> BUG: MIC for non-orthorhombic Cells are not working correctly
+    -> BUG: MIC for non-orthorhombic Cells are not working correctly (Not sure if forget to transpose the unit cell matrix)
 
 DONE:
     -> Possibility to start with no db and have a db hot loaded
@@ -18,8 +18,3 @@ Unnecessary:
     -> Unmapping of Device Memory should not be performed if the memory has to be remapped every frame
     -> Clean Up UBO-Buffer with the scene data
     -> Create BufferAbstraction and check if less remapping improves performance
-
-
-
-IDEA:
-    ->create 2 dynamic storage buffer descriptors for the object buffer

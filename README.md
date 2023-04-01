@@ -6,41 +6,31 @@ The software is supposed to be used in combination with [TOFHET](https://git.rwt
 This tool can be used to detect reaction events in your MD simulations, but also provides a python script to 
 convert your .xyz- and .extxyz-files to a SQL database, which can be used by REDRES as input.
 
-| [Installation](#Installation) - [Usage](#usage) - [How it works](#how-it-works) - [Releases & Changelogs](#releases--changelogs) - [Demo](#demo) - [Integration](#integration) |
+The software is still in active development, if you encounter any bugs or have feature suggestions
+file a GitHub issue or contact me directly at pascalreinhold42@gmail.com.
+
+| [Installation](#Installation) - [Usage](#usage) |
 
 ### Installation
 For now the software is only available for Linux. 
-If you run Ubuntu or a Debian based distribution you can download the software downloading the .deb-package from the packages directory in this repository
-and install by running the following commands in your terminal:
+If you run a Debian based distribution like Ubuntu you can just grab the .deb-package from the packages directory and install by via your package manager, by
+running something like:
 ```bash
     sudo apt update && sudo apt upgrade
-    sudo apt install [path-to-.deb-file]
-    git clone
+    sudo apt install /filepath_to_package/packe_name.deb
 ```
+If you are using a different distribution 
+or want to build from source for other reasons read the [build.md](docs/build.md) in the /docs-directory.
 
-### Dependencies:
-This piece of software has a lot of external dependencies. Before installing them make sure all your packages are up-to-date:
-```
-    sudo apt update && sudo apt upgrade
-```
-Now install the packages for git, cmake, vulkan, glm, glfw3, sqlite3 (probably you already have most of them installed already): 
+### Usage
+After installing the software you can start it by running the following command in your terminal:
 ```bash
-    sudo apt install git # needed to load git submodules
-    sudo apt install cmake # part of the buildsystem for the project
-    sudo apt install build-essential # GNU C++ Compiler and Makefiles
-    sudo apt install sqlite3 # SQL engine
-    sudo apt install libvulkan-dev vulkan-validationlayers-dev spirv-tools # vulkan - Graphics API
-    sudo apt install libglm-dev # linear algebra for computer graphics library
-    sudo apt install libglfw3-dev # window library manages keyboard and mouse input
+    gpu_driven_rcc # start without loading a database
+    gpu_driven_rcc <path-to-your-database.db> # start + load database
+    gpu_driven_rcc <path-to-your-database.db> <relative-path-from-executable-to-asset-directory> # start + load database + specify asset directory
 ```
-If you installed all necessary packages you got it 
-```bash
-    git submodule update --init
-```
-
-## Building:
-To build the program run the build script in this directory
-```bash
-    chmod +x buildScriptUnix.sh # grant file permission to be executed 
-    ./buildScriptUnix.sh
-```
+The third option is only necessary if you build the software from source or
+if the assets directory is not in the default location (/usr/share/gpu_driven_rcc)
+for other reasons.
+If you build from source following the instruction in [build.md](docs/build.md),
+the second command line should be "../"  
