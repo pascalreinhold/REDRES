@@ -18,8 +18,8 @@ enum Tags : uint32_t {
   eCatalyst = 1 << 30,
   eChemical = 1 << 29,
   eHighlighted = 1 << 27,
-  eSelectedByClick = 1 << 26,
-  eSelectedByArea = 1 << 8
+  eSelectedForMeasurement = 1 << 26,
+  eSelectedForTagging = 1 << 8
 };
 
 struct Bond {
@@ -75,6 +75,7 @@ struct VisualizationData {
   std::unique_ptr<Event> activeEvent;
 
   void createBonds(float fudgeFactor);
+  [[nodiscard]] Eigen::Vector3f calcMicDisplacementVec(const Eigen::Vector3f &pos1, const Eigen::Vector3f &pos2) const;
 
  private:
   void createBondsForNonRegularCell(float fudgeFactor);

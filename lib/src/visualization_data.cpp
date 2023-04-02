@@ -107,6 +107,17 @@ void VisualizationData::createBondsForNonRegularCell(const float fudgeFactor) {
   });
 }
 
+// calc displacement vector between two atoms with mic
+Eigen::Vector3f VisualizationData::calcMicDisplacementVec(const Eigen::Vector3f &pos1, const Eigen::Vector3f &pos2) const {
+  Eigen::Matrix3f inverseCellMatrix = unitCellEigen.inverse();
+  const Eigen::Vector3f s_j = inverseCellMatrix*pos1;
+  const Eigen::Vector3f s_k = inverseCellMatrix*pos2;
+  Eigen::Vector3f s_jk = s_j - s_k;
+  const Eigen::Vector3f s_jk_mod = rint(s_jk.array()).matrix();
+  s_jk = s_jk - s_jk_mod;
+  return unitCellEigen*s_jk;
+}
+
 void VisualizationData::createBondsForRegularCell(const float fudgeFactor) {
   Eigen::Array3f BoxLengths = {unitCellEigen(0, 0), unitCellEigen(1, 1), unitCellEigen(2, 2)};
 

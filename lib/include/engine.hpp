@@ -21,6 +21,11 @@
 
 namespace rcc {
 
+enum uiMode {
+  eSelectAndTag,
+  eMeasure
+};
+
 constexpr uint32_t FRAMES_IN_FLIGHT = 3;
 constexpr int MAX_UNIQUE_OBJECTS = 15000;
 
@@ -55,7 +60,9 @@ class Engine {
   static Engine *keyboardBackedEngine;
 
  private:
+  // ui
   std::unique_ptr<class UserInterface> ui;
+  uiMode ui_mode_ = eMeasure;
 
   // buffers
   FrameData frame_data_[FRAMES_IN_FLIGHT];
@@ -114,10 +121,13 @@ class Engine {
   // mouse handling
   uint32_t mouse_buckets[RCC_MOUSE_BUCKET_COUNT] = {};
   void processMousePickingBuffer();
+  void cleanupMeasurementMode();
+  void cleanupSelectAndTagMode();
   void processMouseDrag();
   void selectAtomsWithRect(glm::vec2 start, glm::vec2 end, int frame_index);
   bool bReadMousePickingBuffer_ = false;
   int selected_object_index_ = -1;
+  std::deque<int> selected_atom_numbers_;
 
   // misc
   int max_cell_count_;
@@ -193,7 +203,7 @@ class Engine {
   void writeCullBuffer();
   void writeOffsetBuffer();
   void writeToBuffer(AllocatedBuffer &buffer, uint32_t range, void *data, uint32_t offset = 0) const;
-  void readFromBuffer(AllocatedBuffer &buffer, uint32_t range, void *data, uint32_t offset = 0) const;
+  [[maybe_unused]] void readFromBuffer(AllocatedBuffer &buffer, uint32_t range, void *data, uint32_t offset = 0) const;
   void readFromBufferAndClearIt(AllocatedBuffer &buffer, uint32_t range, void *data, uint32_t offset = 0) const;
   void resetDrawData(vk::CommandBuffer &cmd, AllocatedBuffer src, AllocatedBuffer dst,
                      vk::DeviceSize size, vk::DeviceSize src_offset = 0, vk::DeviceSize dst_offset = 0) const;

@@ -35,6 +35,7 @@ struct SqlPositionReaderHelper {
 class VisDataManager {
  public:
   VisDataManager(const std::string &db_filepath, int experiment_id);
+  ~VisDataManager();
   //TODO: delete copy and assignment op's
   void updatePropertyForSelectedAtomsToDB(int experimentID, int propertyID, int value);
   int getCatalystBaseTypeID();
@@ -61,6 +62,7 @@ class VisDataManager {
   void negateSelectedByAreaTags();
   void removeEventTags(const Event &event);
   void removeSelectedByAreaTags();
+  void removeSelectedForMeasurementTags();
   void makeSelectedAreaChemical();
   void makeSelectedAreaCatalyst();
 
@@ -71,6 +73,10 @@ class VisDataManager {
   void loadAtomPositions(int systemID);
   void loadHinuma(int experimentID);
   void loadAtomElementNumbersAndTags(int experimentID);
+
+  int connectToDBinReadOnly();
+  int connectToDBinReadWrite();
+  int disconnectFromDB();
 
   void loadBonds(int settingID);
 

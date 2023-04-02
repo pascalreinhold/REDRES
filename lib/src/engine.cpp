@@ -174,11 +174,7 @@ void Engine::initCamera() {
 
 void Engine::processMousePickingBuffer() {
   if (!bReadMousePickingBuffer_ || !scene_->visManager) return;
-
-  // make sure an atom is selected
-  if ((selected_object_index_!=-1) && (selected_object_index_ < (*scene_)["Atom"].MaxCount())) {
-    scene_->visManager->getTagsRef()(selected_object_index_) &= (~Tags::eSelectedByClick);
-  }
+  bReadMousePickingBuffer_ = false;
 
   selected_object_index_ = -1;
   for (unsigned int mouse_bucket : mouse_buckets) {
@@ -190,9 +186,27 @@ void Engine::processMousePickingBuffer() {
 
   // make sure an atom is selected
   if ((selected_object_index_!=-1) && (selected_object_index_ < (*scene_)["Atom"].MaxCount())) {
-    scene_->visManager->getTagsRef()(selected_object_index_) |= Tags::eSelectedByClick;
-  }
 
+    // logic for selecting atoms for tagging mode
+    if (ui_mode_==uiMode::eSelectAndTag) {
+      scene_->visManager->getTagsRef()(selected_object_index_) ^= Tags::eSelectedForTagging;
+    }
+
+    // logic for selecting atoms for measurement mode
+    if (ui_mode_==uiMode::eMeasure) {
+      bool wasSelectedBefore = scene_->visManager->getTagsRef()(selected_object_index_) & Tags::eSelectedForMeasurement;
+      scene_->visManager->getTagsRef()(selected_object_index_) |= Tags::eSelectedForMeasurement;
+
+      if(!wasSelectedBefore) selected_atom_numbers_.push_back(selected_object_index_);
+
+      if(selected_atom_numbers_.size() > 3) {
+        scene_->visManager->getTagsRef()(selected_atom_numbers_.front()) ^= Tags::eSelectedForMeasurement;
+        selected_atom_numbers_.pop_front();
+      }
+    }
+  } else {
+    cleanupMeasurementMode();
+  }
 }
 
 void Engine::processMouseDrag() {
@@ -1133,9 +1147,22 @@ void glfw_key_callback(GLFWwindow * /*window*/, int key, int scancode, int actio
   Engine::keyboardBackedEngine->keyCallback(key, scancode, action, mods);
 }
 
+
+void Engine::cleanupMeasurementMode() {
+  scene_->visManager->removeSelectedForMeasurementTags();
+  selected_atom_numbers_.clear();
+}
+
+void Engine::cleanupSelectAndTagMode() {
+  scene_->visManager->removeSelectedByAreaTags();
+}
+
 void Engine::keyCallback(int key, int /*scancode*/, int action, int /*mods*/) {
   if (ui->wantKeyboard()) return;
-  if (key==GLFW_KEY_ESCAPE && action==GLFW_PRESS) scene_->visManager->removeSelectedByAreaTags();
+  if (key==GLFW_KEY_ESCAPE && action==GLFW_PRESS) {
+    if(ui_mode_ == uiMode::eSelectAndTag) {cleanupSelectAndTagMode();}
+    if(ui_mode_ == uiMode::eMeasure) {cleanupMeasurementMode();}
+  }
   if (key==GLFW_KEY_SPACE && action==GLFW_PRESS) toggleFrameControlMode();
   if (key==GLFW_KEY_TAB && action==GLFW_PRESS) toggleCameraMode();
 }
@@ -1572,7 +1599,7 @@ void Engine::selectAtomsWithRect(glm::vec2 start, glm::vec2 end, int frame_index
     }
 
     if (insideRect) {
-      scene_->visManager->getTagsRef()(i) |= Tags::eSelectedByArea;
+      scene_->visManager->getTagsRef()(i) |= Tags::eSelectedForTagging;
     }
   }
 }

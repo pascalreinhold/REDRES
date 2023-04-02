@@ -33,14 +33,14 @@ class UserInterface {
   float titleBarHeight = 10.f; //not the actual value. just to not divide by zero in the first frames
   float secondaryTitleBarHeight = 15.f;
   float leftAlignedWidgetRelativeSize = 0.22f;
-  float debugWindowRelativeHeight = 0.5f;
-  float debugWindowRelativeWidth = 0.22;
+  float infoWindowRelativeHeight = 0.5f;
+  float infoWindowRelativeWidth = 0.22;
 
   // visibility
   bool mainMenubarVisible = true;
   bool styleTestWindowVisible = false;
   bool materialParameterWindowVisible = false;
-  bool debugWindowVisible = true;
+  bool infoWindowVisible = true;
   bool stackToolVisible = false;
   bool demoWindowVisible = false;
 
@@ -59,7 +59,7 @@ class UserInterface {
   void showSecondaryMenubar();
   void showEventInfoWindow();
   void showFileDialog(bool clicked);
-  void showDebugWindow();
+  void showInfoWindow();
   void showMaterialParameterWindow();
   void showPreferencesWindow();
 

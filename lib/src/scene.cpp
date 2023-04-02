@@ -119,8 +119,9 @@ int Scene::tryPickFreezeAtom() const {
 std::string AtomType::ObjectInfo(uint32_t movieFrameIndex, uint32_t inTypeIndex) const {
   std::ostringstream str;
   const auto selected_pos = s.visManager->data().positions[movieFrameIndex].row(inTypeIndex);
-  str << "Atom ID: " << s.visManager->data().atomIDs[inTypeIndex]
-      << "\nAtom Coords:\n" << "[" << selected_pos(0) << ", " << selected_pos(1) << ", " << selected_pos(2) << "]";
+  std::string symbol = s.visManager->data().elementInfos.find(s.visManager->data().tags[inTypeIndex] & 255)->second.symbol;
+  str << "Atom ID: " << s.visManager->data().atomIDs[inTypeIndex] << "\tSymbol: " << symbol
+      << "\nAtom Coords:\t" << "[" << selected_pos(0) << ", " << selected_pos(1) << ", " << selected_pos(2) << "]";
   return str.str();
 }
 
@@ -247,15 +248,15 @@ glm::vec4 Scene::getAtomColor(uint32_t tag) const {
 }
 
 glm::vec4 Scene::colorAtomByElementNumber(uint32_t tag) const {
-  if ((tag & Tags::eSelectedByClick)==Tags::eSelectedByClick) return {0.224f, 1.f, 0.078f, 1.f};
-  if ((tag & Tags::eSelectedByArea)==Tags::eSelectedByArea) return {0.7f, 0.72f, 0.95f, 1.f};
+  if ((tag & Tags::eSelectedForMeasurement)==Tags::eSelectedForMeasurement) return {0.224f, 1.f, 0.078f, 1.f};
+  if ((tag & Tags::eSelectedForTagging)==Tags::eSelectedForTagging) return {0.7f, 0.72f, 0.95f, 1.f};
   if ((tag & Tags::eHighlighted)==Tags::eHighlighted) return {0.83f, 0.1f, 0.7f, 1.f};
   return {visManager->data().elementInfos.find((tag & 255))->second.color, 1.f};
 }
 
 glm::vec4 Scene::colorAtomByBaseType(uint32_t tag) const {
-  if ((tag & Tags::eSelectedByClick)==Tags::eSelectedByClick) return {0.224f, 1.f, 0.078f, 1.f};
-  if ((tag & Tags::eSelectedByArea)==Tags::eSelectedByArea) return {0.7f, 0.72f, 0.95f, 1.f};
+  if ((tag & Tags::eSelectedForMeasurement)==Tags::eSelectedForMeasurement) return {0.224f, 1.f, 0.078f, 1.f};
+  if ((tag & Tags::eSelectedForTagging)==Tags::eSelectedForTagging) return {0.7f, 0.72f, 0.95f, 1.f};
   if ((tag & Tags::eHighlighted)==Tags::eHighlighted) return {0.83f, 0.1f, 0.7f, 1.f};
   if ((tag & Tags::eCatalyst)==Tags::eCatalyst) return gConfig.catalyst_color_;
   if ((tag & Tags::eChemical)==Tags::eChemical) return gConfig.chemical_color_;
@@ -298,7 +299,7 @@ void UnitCellType::writeToObjectBufferAndIndexBuffer(uint32_t movieFrameIndex,
 
   // WRITE UNIT CELL DATA
   objectSSBO[object_index].modelMatrix = glm::mat4{1.0f};
-  objectSSBO[object_index].color1 = glm::vec4(1.f);
+  objectSSBO[object_index].color1 = (selectedObjectIndex != s["Atom"].Count(movieFrameIndex)) ? glm::vec4(1.f) : glm::vec4(0.f, 1.f, 0.f, 1.f);
   objectSSBO[object_index].radius = s.meshes->meshInfos[meshID::eUnitCell].radius;
   objectSSBO[object_index].batchID = meshID::eUnitCell;
   instanceSSBO[object_index].object_id = object_index;

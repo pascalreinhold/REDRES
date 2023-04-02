@@ -74,9 +74,9 @@ void UserInterface::showMainMenubar() {
       ImGui::EndMenu();
     }
 
-    if (ImGui::BeginMenu("Debug Windows")) {
-      ImGui::Checkbox("Show Debug Window", &debugWindowVisible);
-      ImGui::Checkbox("Show Material Parameter Window", &materialParameterWindowVisible);
+    if (ImGui::BeginMenu("Tool Windows")) {
+      ImGui::Checkbox("Show Info-Window", &infoWindowVisible);
+      ImGui::Checkbox("Show Material-Parameter-Window", &materialParameterWindowVisible);
 
 #ifdef RCC_GUI_DEV_MODE
       ImGui::Separator();
@@ -138,9 +138,9 @@ void UserInterface::showEventsTable(int experimentID) {
 }
 
 void UserInterface::showEventInfoWindow() {
-  float width = static_cast<float>(parentEngine->window_->width())*debugWindowRelativeWidth;
+  float width = static_cast<float>(parentEngine->window_->width())*infoWindowRelativeWidth;
   float height = (static_cast<float>(parentEngine->window_->height()) - titleBarHeight - secondaryTitleBarHeight)
-      *debugWindowRelativeHeight;
+      *infoWindowRelativeHeight;
 
   ImGui::SetNextWindowSize({width, height});
   ImGui::SetNextWindowPos({static_cast<float>(parentEngine->window_->width()) - width + 1.f,
@@ -286,7 +286,7 @@ void UserInterface::showLeftAlignedWindow() {
       auto &camISettings = cam.isometric_view_settings_;
 
       if (ImGui::BeginChild("Infos:", {0.f, 0.f}, false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
-        ImGui::InputFloat3("Camera Coords", reinterpret_cast<float *>(&parentEngine->camera_->position_));
+        if(!parentEngine->camera_->is_isometric) ImGui::InputFloat3("Camera Coords", reinterpret_cast<float *>(&parentEngine->camera_->position_));
         ImGui::InputFloat3("View Direction", reinterpret_cast<float *>(&parentEngine->camera_->view_direction_));
         ImGui::InputFloat3("Up Direction", reinterpret_cast<float *>(&parentEngine->camera_->up_direction_));
 
@@ -311,17 +311,17 @@ void UserInterface::showLeftAlignedWindow() {
   }
 }
 
-void UserInterface::showDebugWindow() {
-  float width = static_cast<float>(parentEngine->window_->width())*debugWindowRelativeWidth;
+void UserInterface::showInfoWindow() {
+  float width = static_cast<float>(parentEngine->window_->width())*infoWindowRelativeWidth;
   float height = (static_cast<float>(parentEngine->window_->height()) - titleBarHeight - secondaryTitleBarHeight)
-      *debugWindowRelativeHeight;
+      *infoWindowRelativeHeight;
 
   ImGui::SetNextWindowSize({width, height});
   ImGui::SetNextWindowPos({static_cast<float>(parentEngine->window_->width()) - width + 1.f,
                            titleBarHeight + secondaryTitleBarHeight});
 
-  if (ImGui::Begin("Debug Window", nullptr, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
-    if (ImGui::BeginChild("Debug Window Child")) {
+  if (ImGui::Begin("Info Window", nullptr, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
+    if (ImGui::BeginChild("Info Window Child")) {
 
       ImGui::Text("FPS: %f", 1000.0/parentEngine->framerate_control_.avgFrameTime.avg());
 
@@ -342,38 +342,43 @@ void UserInterface::showDebugWindow() {
                            ImGuiSliderFlags_AlwaysClamp);
         ImGui::Checkbox("Loop Simulation", &parentEngine->framerate_control_.isSimulationLooped);
         ImGui::Checkbox("Manual Movie Frame Control", &parentEngine->framerate_control_.manualFrameControl);
+        ImGui::Separator();
 
-        if (ImGui::Button("Remove Selection")) {
-          parentEngine->scene_->visManager->removeSelectedByAreaTags();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Negate Selection")) {
-          parentEngine->scene_->visManager->negateSelectedByAreaTags();
+        if(parentEngine->ui_mode_ == uiMode::eSelectAndTag) {
+          if (ImGui::Button("Remove Selection")) {
+            parentEngine->scene_->visManager->removeSelectedByAreaTags();
+          }
+          ImGui::SameLine();
+          if (ImGui::Button("Invert Selection")) {
+            parentEngine->scene_->visManager->negateSelectedByAreaTags();
+          }
+
+          if (ImGui::Button("Color by Element")) {
+            parentEngine->scene_->activateColorByElementNumber();
+          }
+          ImGui::SameLine();
+          if (ImGui::Button("Color by BaseType")) {
+            parentEngine->scene_->activateColorByBaseType();
+          }
+
+          if (ImGui::Button("Tag Selection as Chemical (to DB)")) {
+            int chemicalID = parentEngine->scene_->visManager->getChemicalBaseTypeID();
+            int baseTypePropertyID = parentEngine->scene_->visManager->getBaseTypePropertyID();
+            int experimentID = parentEngine->scene_->visManager->getActiveExperiment();
+            parentEngine->scene_->visManager->makeSelectedAreaChemical();
+            parentEngine->scene_->visManager->updatePropertyForSelectedAtomsToDB(experimentID, baseTypePropertyID, chemicalID);
+          }
+
+          if (ImGui::Button("Tag Selection as Catalyst (to DB)")) {
+            int catalystID = parentEngine->scene_->visManager->getCatalystBaseTypeID();
+            int baseTypePropertyID = parentEngine->scene_->visManager->getBaseTypePropertyID();
+            int experimentID = parentEngine->scene_->visManager->getActiveExperiment();
+            parentEngine->scene_->visManager->makeSelectedAreaCatalyst();
+            parentEngine->scene_->visManager->updatePropertyForSelectedAtomsToDB(experimentID, baseTypePropertyID, catalystID);
+          }
+          ImGui::Separator();
         }
 
-        if (ImGui::Button("Color by Element")) {
-          parentEngine->scene_->activateColorByElementNumber();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Color by BaseType")) {
-          parentEngine->scene_->activateColorByBaseType();
-        }
-
-        if (ImGui::Button("Tag Selection as Chemical (to DB)")) {
-          int chemicalID = parentEngine->scene_->visManager->getChemicalBaseTypeID();
-          int baseTypePropertyID = parentEngine->scene_->visManager->getBaseTypePropertyID();
-          int experimentID = parentEngine->scene_->visManager->getActiveExperiment();
-          parentEngine->scene_->visManager->makeSelectedAreaChemical();
-          parentEngine->scene_->visManager->updatePropertyForSelectedAtomsToDB(experimentID, baseTypePropertyID, chemicalID);
-        }
-
-        if (ImGui::Button("Tag Selection as Catalyst (to DB)")) {
-          int catalystID = parentEngine->scene_->visManager->getCatalystBaseTypeID();
-          int baseTypePropertyID = parentEngine->scene_->visManager->getBaseTypePropertyID();
-          int experimentID = parentEngine->scene_->visManager->getActiveExperiment();
-          parentEngine->scene_->visManager->makeSelectedAreaCatalyst();
-          parentEngine->scene_->visManager->updatePropertyForSelectedAtomsToDB(experimentID, baseTypePropertyID, catalystID);
-        }
 
 
 #ifdef RCC_GUI_DEV_MODE
@@ -391,8 +396,7 @@ void UserInterface::showDebugWindow() {
         }
 #endif
 
-        ImGui::Text("Selected Object Index: %d", parentEngine->selected_object_index_);
-        ImGui::Text("Freeze Object Index: %d", parentEngine->scene_->freezeAtom());
+        if(parentEngine->scene_->freezeAtom() != -1) ImGui::Text("Freeze AtomID: %d", parentEngine->scene_->visManager->data().atomIDs[parentEngine->scene_->freezeAtom()]);
 
 #ifdef RCC_GUI_DEV_MODE
         for(const auto& type : parentEngine->scene_->objectTypes) {
@@ -402,12 +406,15 @@ void UserInterface::showDebugWindow() {
         }
 #endif
 
-        if (parentEngine->selected_object_index_!=-1) {
+
+        // is there a selected object and at maximum one atom selected?
+        if (parentEngine->selected_object_index_!=-1 && parentEngine->selected_atom_numbers_.size() <= 1) {
           ImGui::Text("%s",
-                      parentEngine->scene_->getObjectInfo(static_cast<uint32_t>(parentEngine->framerate_control_.movie_frame_index_),
-                                                          parentEngine->selected_object_index_).c_str());
-          if (parentEngine->selected_object_index_
-              < (*parentEngine->scene_)["Atom"].Count(static_cast<uint32_t>(parentEngine->framerate_control_.movie_frame_index_))) {
+                      parentEngine->scene_->getObjectInfo(
+                          static_cast<uint32_t>(parentEngine->framerate_control_.movie_frame_index_),
+                          parentEngine->selected_object_index_).c_str());
+
+          if (parentEngine->selected_atom_numbers_.size() > 0) {
             int freezeID = parentEngine->scene_->freezeAtom();
             int selectID = parentEngine->selected_object_index_;
 
@@ -419,6 +426,33 @@ void UserInterface::showDebugWindow() {
             if (is_frozen) { parentEngine->scene_->pickFreezeAtom(parentEngine->selected_object_index_); }
             if (!is_frozen && aux) { parentEngine->scene_->pickFreezeAtom(-1); }
           }
+        } else {
+          uint32_t index1 = parentEngine->selected_atom_numbers_[0];
+          Eigen::Vector3f pos1 = parentEngine->scene_->visManager->data().positions[parentEngine->GetMovieFrameIndex()].row(index1);
+          uint32_t index2 = parentEngine->selected_atom_numbers_[1];
+          Eigen::Vector3f pos2 = parentEngine->scene_->visManager->data().positions[parentEngine->GetMovieFrameIndex()].row(index2);
+          Eigen::Vector3f displacement21 = parentEngine->scene_->visManager->data().calcMicDisplacementVec(pos2, pos1);
+          float dist21 = displacement21.norm();
+
+          if (parentEngine->selected_atom_numbers_.size() == 2){
+            ImGui::Text("Distance between atoms: %f", dist21);
+          }
+
+          if (parentEngine->selected_atom_numbers_.size() == 3){
+            uint32_t index3 = parentEngine->selected_atom_numbers_[2];
+            Eigen::Vector3f pos3 = parentEngine->scene_->visManager->data().positions[parentEngine->GetMovieFrameIndex()].row(index3);
+            Eigen::Vector3f displacement23 = parentEngine->scene_->visManager->data().calcMicDisplacementVec(pos2, pos3);
+            float dist23 = displacement23.norm();
+            float angle = abs(acosf(displacement21.dot(displacement23)/(dist21*dist23)));
+            ImGui::Text("Bond Angle of 2-1, 2-3: %f°", glm::degrees(angle));
+            ImGui::Text("Distance(mic) between atoms 1 and 2: %f", dist21);
+            ImGui::Text("Distance(mic) between atoms 2 and 3: %f", dist23);
+          }
+          for(auto i : parentEngine->selected_atom_numbers_) {
+            ImGui::Text("%s", parentEngine->scene_->getObjectInfo(
+                static_cast<uint32_t>(parentEngine->framerate_control_.movie_frame_index_), i).c_str());
+          }
+
         }
 
         auto &cellX = parentEngine->scene_->gConfig.xCellCount;
@@ -546,6 +580,33 @@ void UserInterface::showSecondaryMenubar() {
     view_dir = glm::mat3(glm::rotate(glm::radians(step_size), right_dir))*view_dir;
   }
 
+
+  // Button that stays activated when ui_mode_ == eSelectAndTag
+  ImGui::SameLine(ImGui::GetWindowWidth() - 11.0f * ImGui::GetFontSize());
+  bool pop_style_color = false;
+  if(parentEngine->ui_mode_ == uiMode::eSelectAndTag){
+    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+    pop_style_color = true;
+  }
+  if(ImGui::Button("Select And Tag", ImVec2( 0.f, 0.f))) {
+    parentEngine->ui_mode_ = uiMode::eSelectAndTag;
+  }
+  if(pop_style_color) ImGui::PopStyleColor();
+
+
+  // Button that stays activated when ui_mode_ == eMeasure
+  ImGui::SameLine(ImGui::GetWindowWidth()- ImGui::GetFontSize() * 4.25f);
+  pop_style_color = false;
+  if(parentEngine->ui_mode_ == uiMode::eMeasure){
+    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+    pop_style_color = true;
+  }
+  if(ImGui::Button("Measure", ImVec2( 0.f, 0.f))) {
+    parentEngine->ui_mode_ = uiMode::eMeasure;
+  }
+  if (pop_style_color) ImGui::PopStyleColor();
+
+
   ImGui::End();
 }
 
@@ -629,13 +690,13 @@ void UserInterface::show() {
     ImGui::ShowStyleEditor();    // add style editor block (not a window). you can pass in a reference ImGuiStyle structure to compare to, revert to and save to (else it uses the default style)
     ImGui::End();
   }
-  if (debugWindowVisible) showDebugWindow();
+  if (infoWindowVisible) showInfoWindow();
   if (stackToolVisible) ImGui::ShowStackToolWindow();
   if (demoWindowVisible) ImGui::ShowDemoWindow();
   if (preferencesWindowVisible) showPreferencesWindow();
 
   // draw selection rectangle
-  if (!wantMouse() && parentEngine->camera_->is_isometric) {
+  if (!wantMouse() && parentEngine->camera_->is_isometric && parentEngine->ui_mode_ == uiMode::eSelectAndTag) {
     static ImVec2 start{0.0, 0.0};
     static ImVec2 end{0.0, 0.0};
 
@@ -855,7 +916,7 @@ void UserInterface::setupGuiStyleDark() {
   style.Colors[ImGuiCol_PlotHistogram] = gammaCorrect(230, 179, 0, 255);
   style.Colors[ImGuiCol_PlotHistogramHovered] = gammaCorrect(255, 153, 0, 255);
   style.Colors[ImGuiCol_TableHeaderBg] = gammaCorrect(140, 140, 140, 99);
-  style.Colors[ImGuiCol_TableBorderStrong] = gammaCorrect(0, 0, 0, 0);
+  style.Colors[ImGuiCol_TableBorderStrong] = gammaCorrect(0, 0, 0, 255);
   style.Colors[ImGuiCol_TableBorderLight] = gammaCorrect(0, 0, 0, 50);
   style.Colors[ImGuiCol_TableRowBg] = gammaCorrect(0, 0, 0, 15);
   style.Colors[ImGuiCol_TableRowBgAlt] = gammaCorrect(255, 255, 255, 18);

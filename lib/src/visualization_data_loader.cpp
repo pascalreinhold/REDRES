@@ -4,11 +4,12 @@
 
 
 #include "visualization_data_loader.hpp"
-#include "engine.hpp"
 #include <Eigen/StdVector>
 #include <chrono>
 #include <execution>
 
+
+#define RCC_ACTIVATE_PRINT_TIMING
 #ifdef RCC_ACTIVATE_PRINT_TIMING
 #define RCC_PRINT_TIMING(code)\
     do{ \
@@ -26,7 +27,7 @@
 namespace {
 bool sqlCheck(int result) {
   if (result!=SQLITE_OK) {
-    std::cerr << "ALARM\n";
+    std::cerr << "SQLite return code not SQLITE_OK instead: " << result << "\n";
   }
   return result==SQLITE_OK;
 }
@@ -37,7 +38,7 @@ namespace rcc {
 VisDataManager::VisDataManager(const std::string &db_filepath, const int experiment_id) : db_filepath_(db_filepath) {
   std::cout << "sqlite version: " << sqlite3_version << "\n";
   std::cout << "DB-Filepath: " << db_filepath_ << "\n";
-  if (sqlCheck(sqlite3_open_v2(db_filepath_.c_str(), &db, SQLITE_OPEN_READWRITE , nullptr))) {
+  if (sqlCheck(connectToDBinReadOnly())) {
     std::cout << "successfully connected to " << db_filepath_ << std::endl;
   } else {
     std::cerr << "could not connect to" << db_filepath_ << std::endl;
@@ -49,6 +50,10 @@ VisDataManager::VisDataManager(const std::string &db_filepath, const int experim
   std::chrono::duration<double> elapsed_seconds = end - start;
   std::cout << "elapsed time for loading experiment Nr." << experiment_id << " and creating Bonds: "
             << elapsed_seconds.count()*1000.f << "ms\n";
+}
+
+VisDataManager::~VisDataManager() {
+  sqlCheck(disconnectFromDB());
 }
 
 void VisDataManager::load(const int experiment_id) {
@@ -64,12 +69,12 @@ void VisDataManager::load(const int experiment_id) {
   settingID_ = sqlite3_column_int(query, 1);
   sqlite3_finalize(query);
 
-  RCC_PRINT_TIMING(loadUnitCell(systemID_);)
-  RCC_PRINT_TIMING(loadElementInfos(systemID_);)
-  RCC_PRINT_TIMING(loadAtomPositions(systemID_);)
+  RCC_PRINT_TIMING(loadUnitCell(systemID_))
+  RCC_PRINT_TIMING(loadElementInfos(systemID_))
+  RCC_PRINT_TIMING(loadAtomPositions(systemID_))
   RCC_PRINT_TIMING(loadAtomElementNumbersAndTags(experimentID_);)
-  RCC_PRINT_TIMING(loadBonds(settingID_);)
-  RCC_PRINT_TIMING(loadHinuma(experiment_id);)
+  RCC_PRINT_TIMING(loadBonds(settingID_))
+  RCC_PRINT_TIMING(loadHinuma(experiment_id))
 }
 
 static int sqlPositionReaderCallBack(void *data, int, char **columns, char **) {
@@ -92,14 +97,17 @@ void VisDataManager::loadAtomElementNumbersAndTags(int experimentID) {
   sqlite3_prepare_v2(db, "SELECT id FROM base_types WHERE name=\"chemical\"", -1, &query, nullptr);
   sqlite3_step(query);
   int chemicalID = sqlite3_column_int(query, 0);
+  sqlite3_finalize(query);
+
   sqlite3_prepare_v2(db, "SELECT id FROM base_types WHERE name=\"catalyst\"", -1, &query, nullptr);
   sqlite3_step(query);
   int catalystID = sqlite3_column_int(query, 0);
+  sqlite3_finalize(query);
+
   sqlite3_prepare_v2(db, "SELECT id FROM properties WHERE name=\"init_base_type\"", -1, &query, nullptr);
   sqlite3_step(query);
   int propertyID = sqlite3_column_int(query, 0);
-
-
+  sqlite3_finalize(query);
 
   sqlite3_prepare_v2(db,
                      "SELECT atoms.id, atoms.atom_number, atoms.atomic_number, atom_tags.value FROM atoms INNER JOIN atom_tags on atoms.id = atom_tags.atom_id AND atom_tags.property_id = ? WHERE experiment_id = ?",
@@ -147,6 +155,7 @@ void VisDataManager::loadAtomPositions(int systemID) {
   sqlite3_bind_int(query, 1, systemID);
   sqlite3_step(query);
   int maxAtomCount = sqlite3_column_int(query, 0);
+  sqlite3_finalize(query);
 
   //resize all positions vector
   std::vector<Eigen::Matrix<float, Eigen::Dynamic, 3>> &allPositions = vis->positions;
@@ -164,6 +173,7 @@ void VisDataManager::loadAtomPositions(int systemID) {
   sqlite3_bind_int(query, 1, frameIDs[frameIDs.size() - 1]);
   sqlite3_step(query);
   int lastID = sqlite3_column_int(query, 0);
+  sqlite3_finalize(query);
 
   auto cmd3 = "SELECT x,y,z FROM positions WHERE id BETWEEN " + std::to_string(firstID)
       + " AND " + std::to_string(lastID) + " ORDER BY id ASC";
@@ -230,11 +240,13 @@ void VisDataManager::loadHinuma(int experimentID) {
   sqlite3_bind_int(query, 1, experimentID);
   sqlite3_step(query);
   int hinumaID = sqlite3_column_int(query, 0);
+  sqlite3_finalize(query);
 
   sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM hinuma_atoms WHERE hinuma_id = ?", -1, &query, nullptr);
   sqlite3_bind_int(query, 1, hinumaID);
   sqlite3_step(query);
   int hinumaAtomCount = sqlite3_column_int(query, 0);
+  sqlite3_finalize(query);
 
   //resize hinuma containers
   vis->hinuma_atom_numbers.resize(hinumaAtomCount, Eigen::NoChange);
@@ -376,6 +388,7 @@ void VisDataManager::loadActiveEvent(int eventID) {
   vis->activeEvent->frameNumber = sqlite3_column_int(query, 0);
   const int frameID = sqlite3_column_int(query, 1);
 
+
   sqlite3_prepare_v2(db,
                      "SELECT atom_number FROM event_atoms INNER JOIN atoms on event_atoms.atom_id = atoms.id WHERE event_id = ?",
                      -1,
@@ -460,13 +473,13 @@ Eigen::Vector<uint32_t, Eigen::Dynamic> &VisDataManager::getTagsRef() {
 
 void VisDataManager::removeSelectedByAreaTags() {
   for (uint32_t &tag : vis->tags) {
-    tag &= (~Tags::eSelectedByArea);
+    tag &= (~Tags::eSelectedForTagging);
   }
 }
 
 void VisDataManager::makeSelectedAreaChemical() {
   for (uint32_t &tag : vis->tags) {
-    if ((tag & Tags::eSelectedByArea) == Tags::eSelectedByArea) {
+    if ((tag & Tags::eSelectedForTagging) == Tags::eSelectedForTagging) {
       tag |= Tags::eChemical;
       tag &= (~Tags::eCatalyst);
     }
@@ -475,7 +488,7 @@ void VisDataManager::makeSelectedAreaChemical() {
 
 void VisDataManager::makeSelectedAreaCatalyst() {
   for (uint32_t &tag : vis->tags) {
-    if ((tag & Tags::eSelectedByArea) == Tags::eSelectedByArea) {
+    if ((tag & Tags::eSelectedForTagging) == Tags::eSelectedForTagging) {
       tag |= Tags::eCatalyst;
       tag &= (~Tags::eChemical);
     }
@@ -512,9 +525,13 @@ int VisDataManager::getBaseTypePropertyID() const{
 
 void VisDataManager::updatePropertyForSelectedAtomsToDB(int experimentID, int propertyID, int value) {
 
+  sqlCheck(disconnectFromDB());
+  sqlCheck(connectToDBinReadWrite());
+
   sqlite3_stmt *transaction;
   sqlite3_prepare_v2(db, "BEGIN TRANSACTION", -1, &transaction, nullptr);
   sqlite3_step(transaction);
+  sqlite3_finalize(transaction);
 
   sqlite3_stmt *query;
   sqlite3_prepare_v2(db, "UPDATE atom_tags"
@@ -523,7 +540,7 @@ void VisDataManager::updatePropertyForSelectedAtomsToDB(int experimentID, int pr
 
 
   for (int i = 0; i < vis->atomIDs.size(); i++) {
-    if(vis->tags[i] & Tags::eSelectedByArea){
+    if(vis->tags[i] & Tags::eSelectedForTagging){
       sqlite3_bind_int(query, 1, value);
       sqlite3_bind_int(query, 2, experimentID);
       sqlite3_bind_int(query, 3, propertyID);
@@ -534,15 +551,36 @@ void VisDataManager::updatePropertyForSelectedAtomsToDB(int experimentID, int pr
   }
 
   sqlite3_prepare_v2(db, "COMMIT TRANSACTION", -1, &transaction, nullptr);
+  sqlite3_step(transaction);
 
   sqlite3_finalize(query);
   sqlite3_finalize(transaction);
+
+  sqlCheck(disconnectFromDB());
+  sqlCheck(connectToDBinReadOnly());
 }
 
 void VisDataManager::negateSelectedByAreaTags() {
   for (uint32_t &tag : vis->tags) {
-    tag ^= Tags::eSelectedByArea;
+    tag ^= Tags::eSelectedForTagging;
   }
+}
+int VisDataManager::connectToDBinReadOnly() {
+  return sqlite3_open_v2(db_filepath_.c_str(), &db, SQLITE_OPEN_READONLY, nullptr);
+}
+
+int VisDataManager::connectToDBinReadWrite() {
+  return sqlite3_open_v2(db_filepath_.c_str(), &db, SQLITE_OPEN_READWRITE, nullptr);
+}
+
+int VisDataManager::disconnectFromDB() {
+  return sqlite3_close(db);
+}
+
+void VisDataManager::removeSelectedForMeasurementTags() {
+    for (uint32_t &tag : vis->tags) {
+        tag &= (~Tags::eSelectedForMeasurement);
+    }
 }
 
 } // namespace rcc
