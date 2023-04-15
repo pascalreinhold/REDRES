@@ -10,6 +10,7 @@
 #include "vulkan_types.hpp"
 #include "swapchain.hpp"
 #include "visualization_data_loader.hpp"
+#include "buffer.hpp"
 
 //lib
 #include "json.hpp"
@@ -58,23 +59,24 @@ class Engine {
   void cleanup();
   void run();
 
+  static Engine *keyboardBackedEngine;
   void mouseButtonCallback(int button, int action, int mods);
   void keyCallback(int key, int scancode, int action, int mods);
   void scrollCallback(double y_offset);
 
   static nlohmann::json &getConfig();
-  static Engine *keyboardBackedEngine;
 
  private:
   // ui
   std::unique_ptr<class UserInterface> ui;
+  std::unique_ptr<class ResourceManager> resource_manager_;
   uiMode ui_mode_ = eMeasure;
 
   // buffers
   FrameData frame_data_[FRAMES_IN_FLIGHT];
+  BufferResource scene_data_buffer_;
   AllocatedBuffer indirect_dispatch_buffer_{};
-  AllocatedBuffer scene_data_buffer_{};
-  AllocatedBuffer clear_draw_call_buffer_{};
+  BufferResource clear_draw_call_buffer_{};
 
   // descriptors
   DescriptorLayoutCache layout_cache_;
@@ -187,6 +189,8 @@ class Engine {
   std::unique_ptr<Swapchain> swapchain_;
   DeletionStack main_destruction_stack_;
 
+
+
   // init functions
   void initVulkan();
   void recreateSwapchain();
@@ -197,7 +201,6 @@ class Engine {
   void initComputePipelines();
   void initScene();
   void initCamera();
-  void initVisData();
   void initGlfwCallbacks();
 
   // buffer manipulation

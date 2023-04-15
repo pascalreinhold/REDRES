@@ -37,6 +37,8 @@ set(SOURCES
         "${SOURCE_DIR}/window.cpp"
         "${INCLUDE_DIR}/window.hpp"
         "${INCLUDE_DIR}/engine.hpp"
+        "${SOURCE_DIR}/buffer.cpp"
+        "${INCLUDE_DIR}/buffer.hpp"
         "${SOURCE_DIR}/visualization_data.cpp"
         "${SOURCE_DIR}/visualization_data_loader.cpp"
         "${SOURCE_DIR}/scene.cpp"

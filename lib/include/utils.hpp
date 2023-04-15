@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vulkan_types.hpp"
+#include "buffer.hpp"
 
 #include <glm/glm.hpp>
 #include <deque>

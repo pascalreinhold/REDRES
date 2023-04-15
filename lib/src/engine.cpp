@@ -1,5 +1,6 @@
 #include "engine.hpp"
 #include "gui.hpp"
+#include "buffer.hpp"
 #include <GLFW/glfw3.h>
 
 #define VMA_IMPLEMENTATION
@@ -15,9 +16,9 @@
 #include <glm/gtx/string_cast.hpp>
 
 namespace {
-glm::vec4 normalizePlane(const glm::vec4 &plane) {
-  return plane/glm::length(glm::vec3(plane));
-}
+  glm::vec4 normalizePlane(const glm::vec4 &plane) {
+    return plane/glm::length(glm::vec3(plane));
+  }
 }
 
 namespace rcc {
@@ -75,6 +76,7 @@ Engine::Engine(const char *db_filepath, const char *asset_dir_path) {
 
 void Engine::init() {
   initVulkan();
+  resource_manager_ = std::make_unique<ResourceManager>(logical_device_, allocator_);
   initCamera();
   recreateSwapchain();
   initCommands();
@@ -100,7 +102,7 @@ void Engine::initVulkan() {
   vkb::Instance vkbInstance = instanceBuilder
       .set_app_name("TOFHED")
       .set_engine_name("Renderer For Computational Chemistry - RCC")
-      .require_api_version(1, 1, 0)
+      .require_api_version(1, 2, 0)
       .request_validation_layers(enableValidationLayers)
       .use_default_debug_messenger()
       .build()
@@ -171,7 +173,6 @@ void Engine::initCamera() {
   camera_ = std::make_unique<Camera>(perspective_settings, isometric_settings);
   camera_->is_isometric = Engine::getConfig()["UseIsometric"];
   camera_->drag_speed_ = Engine::getConfig()["DragSpeed"];
-
 }
 
 void Engine::processMousePickingBuffer() {
@@ -564,10 +565,12 @@ void Engine::runCullComputeShader(vk::CommandBuffer cmd) {
 
 void Engine::cleanup() {
   logical_device_.waitIdle();
+  resource_manager_.reset(nullptr);
   swapchain_.reset();
   main_destruction_stack_.flush();
   descriptor_allocator_.cleanup();
   layout_cache_.cleanup();
+
 
   atom_pipeline_.reset(nullptr);
   bond_pipeline_.reset(nullptr);
@@ -861,17 +864,20 @@ void Engine::initDescriptors() {
   descriptor_allocator_.init(logical_device_);
   layout_cache_.init(logical_device_);
 
-  clear_draw_call_buffer_ =
-      createBuffer(sizeof(GPUDrawCalls), buf::eTransferSrc | buf::eTransferDst, VMA_MEMORY_USAGE_GPU_ONLY);
+  auto clear_draw_command_handle = resource_manager_->createBuffer(sizeof(GPUDrawCalls), buf::eTransferSrc | buf::eTransferDst, VMA_MEMORY_USAGE_GPU_ONLY);
+  clear_draw_call_buffer_ = resource_manager_->createBufferResource(
+      clear_draw_command_handle, 0, sizeof(GPUDrawCalls), vk::DescriptorType::eStorageBuffer);
 
   indirect_dispatch_buffer_ =
       createBuffer(sizeof(vk::DispatchIndirectCommand), buf::eIndirectBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-  const size_t sceneDataBufferSize = FRAMES_IN_FLIGHT*paddedUniformBufferSize(sizeof(GPUSceneData));
-  scene_data_buffer_ =
-      createBuffer(sceneDataBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
-  vk::DescriptorBufferInfo descriptorSceneBufferInfo{scene_data_buffer_.buffer, 0, sizeof(GPUSceneData)};
+    const size_t sceneDataBufferSize = FRAMES_IN_FLIGHT*paddedUniformBufferSize(sizeof(GPUSceneData));
+    uint32_t scene_data_buffer_handle = resource_manager_->createBuffer(sceneDataBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    resource_manager_->mapBuffer(scene_data_buffer_handle);
+    scene_data_buffer_ = resource_manager_->createBufferResource(
+        scene_data_buffer_handle, 0, sizeof(GPUSceneData), vk::DescriptorType::eUniformBuffer);
 
+  int i = 0;
   for (auto &frame : frame_data_) {
 
     // 3 steps of binding a buffer
@@ -918,7 +924,7 @@ void Engine::initDescriptors() {
                     vk::DescriptorType::eUniformBuffer,
                     vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
         .bindBuffer(1,
-                    &descriptorSceneBufferInfo,
+                    &scene_data_buffer_.descriptor_buffer_info_,
                     vk::DescriptorType::eUniformBufferDynamic,
                     vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
         .bindBuffer(2,
@@ -989,6 +995,7 @@ void Engine::initDescriptors() {
       vmaDestroyBuffer(allocator_, frame.instance_buffer.buffer, frame.instance_buffer.allocation);
       vmaDestroyBuffer(allocator_, frame.final_instance_buffer.buffer, frame.final_instance_buffer.allocation);
     });
+      i++;
   }
 
   main_destruction_stack_.push([=]() {
@@ -997,8 +1004,6 @@ void Engine::initDescriptors() {
     std::cout << "Destroying ClearDrawBuffer" << "\n";
     std::cout << "Destroying IndirectDispatch" << "\n";
 #endif
-    vmaDestroyBuffer(allocator_, scene_data_buffer_.buffer, scene_data_buffer_.allocation);
-    vmaDestroyBuffer(allocator_, clear_draw_call_buffer_.buffer, clear_draw_call_buffer_.allocation);
     vmaDestroyBuffer(allocator_, indirect_dispatch_buffer_.buffer, indirect_dispatch_buffer_.allocation);
   });
 
@@ -1251,8 +1256,8 @@ void Engine::writeSceneBuffer() {
   scene_data_.pointLights[0].lightColor = glm::vec4(1.f, 1.f, 1.f, 50.f);
   scene_data_.ambientColor = glm::vec4(1.f, 1.f, 1.f, 0.02f);
 
-  uint32_t gpu_ubo_offset = paddedUniformBufferSize(sizeof(GPUSceneData))*getCurrentFrameIndex();
-  writeToBuffer(scene_data_buffer_, sizeof(GPUSceneData), &scene_data_, gpu_ubo_offset);
+  scene_data_buffer_.offset_ = paddedUniformBufferSize(sizeof(GPUSceneData))*getCurrentFrameIndex();
+  resource_manager_->writeToBuffer(scene_data_buffer_, &scene_data_, sizeof(GPUSceneData));
 }
 
 void Engine::writeCullBuffer() {
