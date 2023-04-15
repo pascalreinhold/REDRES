@@ -994,9 +994,10 @@ void UserInterface::initImGui() {
       + Engine::getConfig()["FontFilepath"].get<std::string>();
   io.Fonts->AddFontFromFileTTF(font_filepath.c_str(), 18);
 
-  //io.Fonts->GetTexDataAsRGBA32();
-
-  parentEngine->immediateSubmit([&](vk::CommandBuffer cmd) {
+  parentEngine->resource_manager_->immediateSubmit(
+      parentEngine->upload_context_,
+      parentEngine->graphics_queue_,
+      [&](vk::CommandBuffer cmd) {
     ImGui_ImplVulkan_CreateFontsTexture(cmd);
   });
 

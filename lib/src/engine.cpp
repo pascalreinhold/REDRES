@@ -251,9 +251,10 @@ void Engine::run() {
     long int frame_index = ((framerate_control_.frame_number_ - 1)%FRAMES_IN_FLIGHT);
     if (frame_index==-1) frame_index = FRAMES_IN_FLIGHT - 1;
 
-    readFromBufferAndClearIt(frame_data_[frame_index].mouseBucketBuffer,
-                             sizeof(uint32_t)*RCC_MOUSE_BUCKET_COUNT,
-                             mouse_buckets);
+    resource_manager_->readFromBufferAndClearIt(
+        frame_data_[frame_index].mouseBucketBuffer,
+        sizeof(uint32_t)*RCC_MOUSE_BUCKET_COUNT,
+        mouse_buckets);
 
     if (experiment_state_ != State::eNone) {
       // update selected index variable
@@ -477,17 +478,20 @@ void Engine::render() {
   }
 }
 
-void Engine::draw(vk::CommandBuffer &cmd) const {
+void Engine::draw(vk::CommandBuffer &cmd) {
 
   //bind Global Descriptor Set and Vertex-/Index-Buffers
-  uint32_t gpu_ubo_offset = paddedUniformBufferSize(sizeof(GPUSceneData))*getCurrentFrameIndex();
+  uint32_t gpu_ubo_offset = paddedUniformBufferSize(sizeof(GPUSceneData)) * getCurrentFrameIndex();
 
   cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, graphics_pipeline_layout_,
                          0, 1, &getCurrentFrame().globalDescriptorSet,
                          1, &gpu_ubo_offset);
 
-  cmd.bindVertexBuffers(0, static_cast<vk::Buffer>(meshes.vertexBuffer.buffer), static_cast<vk::DeviceSize>(0));
-  cmd.bindIndexBuffer(meshes.indexBuffer.buffer, 0, vk::IndexType::eUint32);
+    auto& vertex_buffer = resource_manager_->getBuffer(meshes.accumulated_mesh_->vertexBuffer_.handle_);
+    auto& index_buffer = resource_manager_->getBuffer(meshes.accumulated_mesh_->indexBuffer_.handle_);
+
+    cmd.bindVertexBuffers(0, vertex_buffer.buffer_, {0});
+    cmd.bindIndexBuffer(index_buffer.buffer_, 0, vk::IndexType::eUint32);
 
   if (camera_->is_isometric) {
     cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, atom_pipeline_iso_->pipeline());
@@ -496,45 +500,50 @@ void Engine::draw(vk::CommandBuffer &cmd) const {
   }
 
   if ((*scene_)["Atom"].isLoaded() && (*scene_)["Atom"].shown) {
-    cmd.drawIndexedIndirect(getCurrentFrame().draw_call_buffer.buffer,
+
+    //auto indices = meshes.meshInfos[meshID::eAtom].indexCount;
+    //cmd.drawIndexed(indices, 1400, 0, 0, 0);
+
+    cmd.drawIndexedIndirect(resource_manager_->getBuffer(getCurrentFrame().draw_call_buffer.handle_).buffer_,
                             sizeof(vk::DrawIndexedIndirectCommand)*meshID::eAtom,
                             1,
                             sizeof(vk::DrawIndexedIndirectCommand));
-  }
 
-  if ((*scene_)["UnitCell"].isLoaded() && (*scene_)["UnitCell"].shown) {
-    cmd.drawIndexedIndirect(getCurrentFrame().draw_call_buffer.buffer,
-                            sizeof(vk::DrawIndexedIndirectCommand)*meshID::eUnitCell,
-                            1,
-                            sizeof(vk::DrawIndexedIndirectCommand));
-  }
+     }
 
-  if ((*scene_)["Vector"].isLoaded() && (*scene_)["Vector"].shown) {
-    cmd.drawIndexedIndirect(getCurrentFrame().draw_call_buffer.buffer,
-                            sizeof(vk::DrawIndexedIndirectCommand)*meshID::eVector,
-                            1,
-                            sizeof(vk::DrawIndexedIndirectCommand));
-  }
+    if ((*scene_)["UnitCell"].isLoaded() && (*scene_)["UnitCell"].shown) {
+      cmd.drawIndexedIndirect(resource_manager_->getBuffer(getCurrentFrame().draw_call_buffer.handle_).buffer_,
+                              sizeof(vk::DrawIndexedIndirectCommand)*meshID::eUnitCell,
+                              1,
+                              sizeof(vk::DrawIndexedIndirectCommand));
+    }
 
-  if ((*scene_)["Cylinder"].isLoaded() && (*scene_)["Cylinder"].shown) {
-    cmd.drawIndexedIndirect(getCurrentFrame().draw_call_buffer.buffer,
-                            sizeof(vk::DrawIndexedIndirectCommand)*meshID::eCylinder,
-                            1,
-                            sizeof(vk::DrawIndexedIndirectCommand));
-  }
+    if ((*scene_)["Vector"].isLoaded() && (*scene_)["Vector"].shown) {
+      cmd.drawIndexedIndirect(resource_manager_->getBuffer(getCurrentFrame().draw_call_buffer.handle_).buffer_,
+                              sizeof(vk::DrawIndexedIndirectCommand)*meshID::eVector,
+                              1,
+                              sizeof(vk::DrawIndexedIndirectCommand));
+    }
 
-  if (camera_->is_isometric) {
-    cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, bond_pipeline_iso_->pipeline());
-  } else {
-    cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, bond_pipeline_->pipeline());
-  }
+    if ((*scene_)["Cylinder"].isLoaded() && (*scene_)["Cylinder"].shown) {
+      cmd.drawIndexedIndirect(resource_manager_->getBuffer(getCurrentFrame().draw_call_buffer.handle_).buffer_,
+                              sizeof(vk::DrawIndexedIndirectCommand)*meshID::eCylinder,
+                              1,
+                              sizeof(vk::DrawIndexedIndirectCommand));
+    }
 
-  if ((*scene_)["Bond"].isLoaded() && (*scene_)["Bond"].shown) {
-    cmd.drawIndexedIndirect(getCurrentFrame().draw_call_buffer.buffer,
-                            sizeof(vk::DrawIndexedIndirectCommand)*meshID::eBond,
-                            1,
-                            sizeof(vk::DrawIndexedIndirectCommand));
-  }
+    if (camera_->is_isometric) {
+      cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, bond_pipeline_iso_->pipeline());
+    } else {
+      cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, bond_pipeline_->pipeline());
+    }
+
+    if ((*scene_)["Bond"].isLoaded() && (*scene_)["Bond"].shown) {
+      cmd.drawIndexedIndirect(resource_manager_->getBuffer(getCurrentFrame().draw_call_buffer.handle_).buffer_,
+                              sizeof(vk::DrawIndexedIndirectCommand)*meshID::eBond,
+                              1,
+                              sizeof(vk::DrawIndexedIndirectCommand));
+    }
 }
 
 void Engine::runCullComputeShader(vk::CommandBuffer cmd) {
@@ -545,17 +554,17 @@ void Engine::runCullComputeShader(vk::CommandBuffer cmd) {
                          getCurrentFrame().test_compute_shader_set,
                          {});
 
-  cmd.dispatchIndirect(indirect_dispatch_buffer_.buffer, 0);
+  cmd.dispatchIndirect(resource_manager_->getBuffer(indirect_dispatch_buffer_.handle_).buffer_, 0);
 
   std::vector<vk::BufferMemoryBarrier> barriers = {
       vk::BufferMemoryBarrier{vk::AccessFlagBits::eMemoryWrite, vk::AccessFlagBits::eMemoryRead,
                               graphics_queue_family_, graphics_queue_family_,
-                              getCurrentFrame().final_instance_buffer.buffer, 0,
+                              resource_manager_->getBuffer(getCurrentFrame().final_instance_buffer.handle_).buffer_, 0,
                               MAX_UNIQUE_OBJECTS*sizeof(GPUFinalInstance)*27},
       vk::BufferMemoryBarrier{vk::AccessFlagBits::eMemoryWrite | vk::AccessFlagBits::eMemoryRead,
                               vk::AccessFlagBits::eMemoryRead,
                               graphics_queue_family_, graphics_queue_family_,
-                              getCurrentFrame().draw_call_buffer.buffer, 0,
+                              resource_manager_->getBuffer(getCurrentFrame().draw_call_buffer.handle_).buffer_, 0,
                               sizeof(GPUDrawCalls)}
   };
 
@@ -707,130 +716,29 @@ void Engine::loadMeshes() {
   bond_mesh.calcRadius();
   bond_mesh.optimizeMesh();
 
+
+    // destroy old meshes
+  if (meshes.accumulated_mesh_) {
+    resource_manager_->destroyBuffer(meshes.accumulated_mesh_->vertexBuffer_.handle_);
+    resource_manager_->destroyBuffer(meshes.accumulated_mesh_->indexBuffer_.handle_);
+    resource_manager_->buffers_.erase(meshes.accumulated_mesh_->vertexBuffer_.handle_);
+    resource_manager_->buffers_.erase(meshes.accumulated_mesh_->indexBuffer_.handle_);
+    meshes.accumulated_mesh_.reset(nullptr);
+  }
+
   meshes = MeshMerger();
-  // load meshes and free cpu side mesh data
+  meshes.accumulated_mesh_ = std::make_unique<Mesh>();
+
+  // load meshes
   meshes.addMesh(atom_mesh, meshID::eAtom, atom_pipeline_->pipeline(), graphics_pipeline_layout_)
       .addMesh(unit_cell_mesh, meshID::eUnitCell, atom_pipeline_->pipeline(), graphics_pipeline_layout_)
       .addMesh(vector_mesh, meshID::eVector, atom_pipeline_->pipeline(), graphics_pipeline_layout_)
       .addMesh(cylinder_mesh, meshID::eCylinder, atom_pipeline_->pipeline(), graphics_pipeline_layout_)
       .addMesh(bond_mesh, meshID::eBond, bond_pipeline_->pipeline(), graphics_pipeline_layout_);
-  uploadMesh(*meshes.accumulated_mesh_, meshes.indexBuffer, meshes.vertexBuffer);
-  meshes.accumulated_mesh_.reset(nullptr);
+  std::tie(meshes.accumulated_mesh_->vertexBuffer_, meshes.accumulated_mesh_->indexBuffer_)
+  = resource_manager_->uploadMesh(*(meshes.accumulated_mesh_), upload_context_, graphics_queue_);
 
   scene_->setMeshes(&meshes);
-}
-
-void Engine::uploadMesh(Mesh &mesh, AllocatedBuffer &indexBuffer, AllocatedBuffer &vertexBuffer) {
-  size_t vertex_buffer_size = mesh.vertices_.size()*sizeof(BasicVertex);
-
-  //create staging buffer
-  VkBufferCreateInfo vertex_staging_buffer_create_info = {};
-  vertex_staging_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  vertex_staging_buffer_create_info.size = vertex_buffer_size;
-  vertex_staging_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-  VmaAllocationCreateInfo vma_alloc_vertex_staging_buffer_info{};
-  vma_alloc_vertex_staging_buffer_info.usage = VMA_MEMORY_USAGE_CPU_ONLY;
-  AllocatedBuffer vertexStagingBuffer{};
-
-  vmaCreateBuffer(allocator_, &vertex_staging_buffer_create_info, &vma_alloc_vertex_staging_buffer_info,
-                  &vertexStagingBuffer.buffer, &vertexStagingBuffer.allocation, nullptr);
-
-  // writing to staging buffer
-  void *vertexData;
-  vmaMapMemory(allocator_, vertexStagingBuffer.allocation, &vertexData);
-  memcpy(vertexData, mesh.vertices_.data(), vertex_buffer_size);
-  vmaUnmapMemory(allocator_, vertexStagingBuffer.allocation);
-
-
-  // create vertex buffer
-  VkBufferCreateInfo vertex_buffer_create_info = {};
-  vertex_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  vertex_buffer_create_info.size = vertex_buffer_size;
-  vertex_buffer_create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-  VmaAllocationCreateInfo vma_alloc_vertex_buffer_info{};
-  vma_alloc_vertex_buffer_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-  vmaCreateBuffer(allocator_, &vertex_buffer_create_info, &vma_alloc_vertex_buffer_info,
-                  &vertexBuffer.buffer,
-                  &vertexBuffer.allocation,
-                  nullptr);
-
-  // copy from staging to
-  immediateSubmit([=](vk::CommandBuffer cmd) {
-    vk::BufferCopy copy;
-    copy.dstOffset = 0;
-    copy.srcOffset = 0;
-    copy.size = vertex_buffer_size;
-    cmd.copyBuffer(vertexStagingBuffer.buffer, vertexBuffer.buffer, 1, &copy);
-  });
-
-  vmaDestroyBuffer(allocator_, vertexStagingBuffer.buffer, vertexStagingBuffer.allocation);
-
-  main_destruction_stack_.push([=]() {
-#ifdef RCC_DESTROY_MESSAGES
-    std::cout << "Destroying Mesh Vertex Buffer" << "\n";
-#endif
-    vmaDestroyBuffer(allocator_, vertexBuffer.buffer, vertexBuffer.allocation);
-  });
-
-
-  //upload index buffer
-  size_t index_buffer_size = mesh.indices_.size()*sizeof(uint32_t);
-
-  //create staging buffer
-  VkBufferCreateInfo index_staging_buffer_create_info = {};
-  index_staging_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  index_staging_buffer_create_info.size = index_buffer_size;
-  index_staging_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-  VmaAllocationCreateInfo vma_alloc_index_staging_buffer_info{};
-  vma_alloc_index_staging_buffer_info.usage = VMA_MEMORY_USAGE_CPU_ONLY;
-
-  AllocatedBuffer indexStagingBuffer{};
-
-  vmaCreateBuffer(allocator_, &index_staging_buffer_create_info, &vma_alloc_index_staging_buffer_info,
-                  &indexStagingBuffer.buffer, &indexStagingBuffer.allocation, nullptr);
-
-  // writing to staging buffer
-  void *indexBufferData;
-  vmaMapMemory(allocator_, indexStagingBuffer.allocation, &indexBufferData);
-  memcpy(indexBufferData, mesh.indices_.data(), index_buffer_size);
-  vmaUnmapMemory(allocator_, indexStagingBuffer.allocation);
-
-  // create index buffer
-  VkBufferCreateInfo index_buffer_create_info = {};
-  index_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  index_buffer_create_info.size = index_buffer_size;
-  index_buffer_create_info.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-  VmaAllocationCreateInfo vma_alloc_index_buffer_info{};
-  vma_alloc_index_buffer_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-  vmaCreateBuffer(allocator_, &index_buffer_create_info, &vma_alloc_index_buffer_info,
-                  &indexBuffer.buffer,
-                  &indexBuffer.allocation,
-                  nullptr);
-
-  // copy from staging to
-  immediateSubmit([=](vk::CommandBuffer cmd) {
-    vk::BufferCopy copy;
-    copy.dstOffset = 0;
-    copy.srcOffset = 0;
-    copy.size = index_buffer_size;
-    cmd.copyBuffer(indexStagingBuffer.buffer, indexBuffer.buffer, 1, &copy);
-  });
-
-  vmaDestroyBuffer(allocator_, indexStagingBuffer.buffer, indexStagingBuffer.allocation);
-
-  main_destruction_stack_.push([=]() {
-
-#ifdef RCC_DESTROY_MESSAGES
-    std::cout << "Destroying Mesh Index Buffer" << "\n";
-#endif
-    vmaDestroyBuffer(allocator_, indexBuffer.buffer, indexBuffer.allocation);
-  });
 }
 
 FrameData &Engine::getCurrentFrame() {
@@ -845,18 +753,6 @@ uint32_t Engine::getCurrentFrameIndex() const {
   return framerate_control_.frame_number_%FRAMES_IN_FLIGHT;
 }
 
-AllocatedBuffer Engine::createBuffer(size_t allocSize, vk::BufferUsageFlags usage, VmaMemoryUsage memory_usage) const {
-
-  VkBufferCreateInfo buffer_create_info =
-      static_cast<VkBufferCreateInfo>(vk::BufferCreateInfo{vk::BufferCreateFlags(), allocSize, usage});
-  VmaAllocationCreateInfo allocation_create_info{};
-  allocation_create_info.usage = memory_usage;
-
-  AllocatedBuffer buffer{};
-  vmaCreateBuffer(allocator_, &buffer_create_info, &allocation_create_info,
-                  &buffer.buffer, &buffer.allocation, nullptr);
-  return buffer;
-}
 
 void Engine::initDescriptors() {
   using buf = vk::BufferUsageFlagBits;
@@ -866,148 +762,115 @@ void Engine::initDescriptors() {
 
   auto clear_draw_command_handle = resource_manager_->createBuffer(sizeof(GPUDrawCalls), buf::eTransferSrc | buf::eTransferDst, VMA_MEMORY_USAGE_GPU_ONLY);
   clear_draw_call_buffer_ = resource_manager_->createBufferResource(
-      clear_draw_command_handle, 0, sizeof(GPUDrawCalls), vk::DescriptorType::eStorageBuffer);
+      clear_draw_command_handle, 0, sizeof(GPUDrawCalls), {});
 
-  indirect_dispatch_buffer_ =
-      createBuffer(sizeof(vk::DispatchIndirectCommand), buf::eIndirectBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+  auto indirect_dispatch_buffer_handle = resource_manager_->createBuffer(sizeof(vk::DispatchIndirectCommand), buf::eIndirectBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
+  indirect_dispatch_buffer_ = resource_manager_->createBufferResource(
+      indirect_dispatch_buffer_handle, 0, sizeof(vk::DispatchIndirectCommand), {});
+  resource_manager_->mapBuffer(indirect_dispatch_buffer_handle);
 
     const size_t sceneDataBufferSize = FRAMES_IN_FLIGHT*paddedUniformBufferSize(sizeof(GPUSceneData));
     uint32_t scene_data_buffer_handle = resource_manager_->createBuffer(sceneDataBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
     resource_manager_->mapBuffer(scene_data_buffer_handle);
     scene_data_buffer_ = resource_manager_->createBufferResource(
-        scene_data_buffer_handle, 0, sizeof(GPUSceneData), vk::DescriptorType::eUniformBuffer);
+        scene_data_buffer_handle, 0, sizeof(GPUSceneData), vk::DescriptorType::eUniformBufferDynamic);
 
-  int i = 0;
   for (auto &frame : frame_data_) {
 
-    // 3 steps of binding a buffer
-    // 1. Creation and 2. Description
+    auto mouse_bucket_buffer_handle = resource_manager_->
+        createBuffer(sizeof(mouse_buckets), buf::eStorageBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    frame.mouseBucketBuffer = resource_manager_->
+        createBufferResource(mouse_bucket_buffer_handle, 0, sizeof(mouse_buckets), vk::DescriptorType::eStorageBuffer);
+    resource_manager_->mapBuffer(mouse_bucket_buffer_handle);
 
-    frame.mouseBucketBuffer =
-        createBuffer(RCC_MOUSE_BUCKET_COUNT*sizeof(uint32_t), buf::eStorageBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
-    vk::DescriptorBufferInfo
-        descriptorMouseBucketBufferInfo{frame.mouseBucketBuffer.buffer, 0, RCC_MOUSE_BUCKET_COUNT*sizeof(uint32_t)};
+    auto cam_buffer_handle = resource_manager_->
+        createBuffer(sizeof(GPUCamData), buf::eUniformBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    frame.cam_buffer = resource_manager_->
+        createBufferResource(cam_buffer_handle, 0, sizeof(GPUCamData), vk::DescriptorType::eUniformBuffer);
+    resource_manager_->mapBuffer(cam_buffer_handle);
 
-    frame.cam_buffer = createBuffer(sizeof(GPUCamData), buf::eUniformBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
-    vk::DescriptorBufferInfo descriptorCamBufferInfo{frame.cam_buffer.buffer, 0, sizeof(GPUCamData)};
+    auto object_buffer_handle = resource_manager_->
+        createBuffer(sizeof(GPUObjectData)*MAX_UNIQUE_OBJECTS, buf::eStorageBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    frame.object_buffer = resource_manager_->
+        createBufferResource(object_buffer_handle, 0, sizeof(GPUObjectData)*MAX_UNIQUE_OBJECTS, vk::DescriptorType::eStorageBuffer);
+    resource_manager_->mapBuffer(object_buffer_handle);
 
-    frame.object_buffer =
-        createBuffer((sizeof(GPUObjectData))*MAX_UNIQUE_OBJECTS, buf::eStorageBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
-    vk::DescriptorBufferInfo
-        descriptorObjectBufferInfo{frame.object_buffer.buffer, 0, sizeof(GPUObjectData)*MAX_UNIQUE_OBJECTS};
+    auto cull_data_buffer_handle = resource_manager_->
+        createBuffer(sizeof(GPUCullData), buf::eStorageBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    frame.cull_data_buffer = resource_manager_->
+        createBufferResource(cull_data_buffer_handle, 0, sizeof(GPUCullData), vk::DescriptorType::eStorageBuffer);
+    resource_manager_->mapBuffer(cull_data_buffer_handle);
 
-    frame.cull_data_buffer = createBuffer(sizeof(GPUCullData), buf::eStorageBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
-    vk::DescriptorBufferInfo descriptorCullDataBufferInfo{frame.cull_data_buffer.buffer, 0, sizeof(GPUCullData)};
+    auto offset_buffer_handle = resource_manager_->
+        createBuffer(sizeof(GPUOffsets), buf::eStorageBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    frame.offset_buffer = resource_manager_->
+        createBufferResource(offset_buffer_handle, 0, sizeof(GPUOffsets), vk::DescriptorType::eStorageBuffer);
+    resource_manager_->mapBuffer(offset_buffer_handle);
 
-    frame.offset_buffer = createBuffer(sizeof(GPUOffsets), buf::eStorageBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
-    vk::DescriptorBufferInfo descriptorOffsetBufferInfo{frame.offset_buffer.buffer, 0, sizeof(GPUOffsets)};
-
-    frame.instance_buffer =
+    auto instance_buffer_handle = resource_manager_->
         createBuffer(sizeof(GPUInstance)*MAX_UNIQUE_OBJECTS, buf::eStorageBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
-    vk::DescriptorBufferInfo
-        descriptorInstanceBufferInfo{frame.instance_buffer.buffer, 0, sizeof(GPUInstance)*MAX_UNIQUE_OBJECTS};
+    frame.instance_buffer = resource_manager_->
+        createBufferResource(instance_buffer_handle, 0, sizeof(GPUInstance)*MAX_UNIQUE_OBJECTS, vk::DescriptorType::eStorageBuffer);
+    resource_manager_->mapBuffer(instance_buffer_handle);
 
-    frame.final_instance_buffer =
-        createBuffer(sizeof(GPUFinalInstance)*MAX_UNIQUE_OBJECTS*27, buf::eStorageBuffer, VMA_MEMORY_USAGE_GPU_ONLY);
-    vk::DescriptorBufferInfo descriptorFinalInstanceBufferInfo
-        {frame.final_instance_buffer.buffer, 0, sizeof(GPUFinalInstance)*MAX_UNIQUE_OBJECTS*27};
+    auto final_instance_buffer_handle = resource_manager_->
+        createBuffer(sizeof(GPUFinalInstance)*MAX_UNIQUE_OBJECTS*27, buf::eStorageBuffer, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    frame.final_instance_buffer = resource_manager_->
+        createBufferResource(final_instance_buffer_handle, 0, sizeof(GPUFinalInstance)*MAX_UNIQUE_OBJECTS*27, vk::DescriptorType::eStorageBuffer);
 
-    frame.draw_call_buffer = createBuffer(sizeof(GPUDrawCalls),
-                                          buf::eStorageBuffer | buf::eIndirectBuffer | buf::eTransferDst,
-                                          VMA_MEMORY_USAGE_GPU_ONLY);
-    vk::DescriptorBufferInfo descriptorDrawCallBufferInfo{frame.draw_call_buffer.buffer, 0, sizeof(GPUDrawCalls)};
+    auto draw_call_buffer_handle = resource_manager_->
+        createBuffer(sizeof(GPUDrawCalls), buf::eStorageBuffer | buf::eIndirectBuffer | buf::eTransferDst, VMA_MEMORY_USAGE_GPU_ONLY);
+    frame.draw_call_buffer = resource_manager_->
+        createBufferResource(draw_call_buffer_handle, 0, sizeof(GPUDrawCalls), vk::DescriptorType::eStorageBuffer);
 
     // 3. Bondage
     DescriptorBuilder::begin(&layout_cache_, &descriptor_allocator_)
         .bindBuffer(0,
-                    &descriptorCamBufferInfo,
-                    vk::DescriptorType::eUniformBuffer,
+                    frame.cam_buffer,
                     vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
         .bindBuffer(1,
-                    &scene_data_buffer_.descriptor_buffer_info_,
-                    vk::DescriptorType::eUniformBufferDynamic,
+                    scene_data_buffer_,
                     vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
         .bindBuffer(2,
-                    &descriptorObjectBufferInfo,
-                    vk::DescriptorType::eStorageBuffer,
+                    frame.object_buffer,
                     vk::ShaderStageFlagBits::eVertex)
         .bindBuffer(3,
-                    &descriptorMouseBucketBufferInfo,
-                    vk::DescriptorType::eStorageBuffer,
+                    frame.mouseBucketBuffer,
                     vk::ShaderStageFlagBits::eFragment)
         .bindBuffer(4,
-                    &descriptorFinalInstanceBufferInfo,
-                    vk::DescriptorType::eStorageBuffer,
+                    frame.final_instance_buffer,
                     vk::ShaderStageFlagBits::eVertex)
         .bindBuffer(5,
-                    &descriptorOffsetBufferInfo,
-                    vk::DescriptorType::eStorageBuffer,
+                    frame.offset_buffer,
                     vk::ShaderStageFlagBits::eVertex)
         .build(frame.globalDescriptorSet, graphics_descriptor_set_layout);
 
     DescriptorBuilder::begin(&layout_cache_, &descriptor_allocator_)
         .bindBuffer(0,
-                    &descriptorObjectBufferInfo,
-                    vk::DescriptorType::eStorageBuffer,
+                    frame.object_buffer,
                     vk::ShaderStageFlagBits::eCompute)
         .bindBuffer(1,
-                    &descriptorCullDataBufferInfo,
-                    vk::DescriptorType::eStorageBuffer,
+                    frame.cull_data_buffer,
                     vk::ShaderStageFlagBits::eCompute)
         .bindBuffer(2,
-                    &descriptorInstanceBufferInfo,
-                    vk::DescriptorType::eStorageBuffer,
+                    frame.instance_buffer,
                     vk::ShaderStageFlagBits::eCompute)
         .bindBuffer(3,
-                    &descriptorFinalInstanceBufferInfo,
-                    vk::DescriptorType::eStorageBuffer,
+                    frame.final_instance_buffer,
                     vk::ShaderStageFlagBits::eCompute)
         .bindBuffer(4,
-                    &descriptorDrawCallBufferInfo,
-                    vk::DescriptorType::eStorageBuffer,
+                    frame.draw_call_buffer,
                     vk::ShaderStageFlagBits::eCompute)
         .bindBuffer(5,
-                    &descriptorOffsetBufferInfo,
-                    vk::DescriptorType::eStorageBuffer,
+                    frame.offset_buffer,
                     vk::ShaderStageFlagBits::eCompute)
         .build(frame.test_compute_shader_set, culling_descriptor_set_layout);
 
-
-    // set mouseBucketBufferMemory to 0 when starting the program
-    {
-      void *mapped;
-      vmaMapMemory(allocator_, frame.mouseBucketBuffer.allocation, &mapped);
-      memset(mapped, 0, RCC_MOUSE_BUCKET_COUNT*sizeof(uint32_t));
-      vmaUnmapMemory(allocator_, frame.mouseBucketBuffer.allocation);
-    }
-
-    // queue destroy buffer calls
-    main_destruction_stack_.push([=]() {
-#ifdef RCC_DESTROY_MESSAGES
-      std::cout << "Destroying PerFrame Buffers" << "\n";
-#endif
-      vmaDestroyBuffer(allocator_, frame.cam_buffer.buffer, frame.cam_buffer.allocation);
-      vmaDestroyBuffer(allocator_, frame.object_buffer.buffer, frame.object_buffer.allocation);
-      vmaDestroyBuffer(allocator_, frame.cull_data_buffer.buffer, frame.cull_data_buffer.allocation);
-      vmaDestroyBuffer(allocator_, frame.mouseBucketBuffer.buffer, frame.mouseBucketBuffer.allocation);
-      vmaDestroyBuffer(allocator_, frame.offset_buffer.buffer, frame.offset_buffer.allocation);
-      vmaDestroyBuffer(allocator_, frame.draw_call_buffer.buffer, frame.draw_call_buffer.allocation);
-      vmaDestroyBuffer(allocator_, frame.instance_buffer.buffer, frame.instance_buffer.allocation);
-      vmaDestroyBuffer(allocator_, frame.final_instance_buffer.buffer, frame.final_instance_buffer.allocation);
-    });
-      i++;
+    resource_manager_->clearBuffer(frame.mouseBucketBuffer);
   }
-
-  main_destruction_stack_.push([=]() {
-#ifdef RCC_DESTROY_MESSAGES
-    std::cout << "Destroying Descriptor Uniform Buffer" << "\n";
-    std::cout << "Destroying ClearDrawBuffer" << "\n";
-    std::cout << "Destroying IndirectDispatch" << "\n";
-#endif
-    vmaDestroyBuffer(allocator_, indirect_dispatch_buffer_.buffer, indirect_dispatch_buffer_.allocation);
-  });
-
 }
+
 
 // https://github.com/SaschaWillems/Vulkan/tree/master/examples/dynamicuniformbuffer
 //returns the padded size of a struct in a uniform buffer
@@ -1019,6 +882,7 @@ size_t Engine::paddedUniformBufferSize(size_t old_size) const {
   }
   return aligned_size;
 }
+
 
 void Engine::beginRenderPass(vk::CommandBuffer &cmd, uint32_t swapchain_index) {
 
@@ -1042,52 +906,6 @@ void Engine::beginRenderPass(vk::CommandBuffer &cmd, uint32_t swapchain_index) {
   cmd.setScissor(0, scissor);
 }
 
-void Engine::writeToBuffer(AllocatedBuffer &buffer, uint32_t range, void *data, uint32_t offset /* = 0*/) const {
-  char *mapped;
-
-  vmaMapMemory(allocator_, buffer.allocation, (void **) &mapped);
-  mapped += offset;
-  memcpy(mapped, data, range);
-  vmaUnmapMemory(allocator_, buffer.allocation);
-}
-
-void Engine::readFromBufferAndClearIt(AllocatedBuffer &buffer,
-                                      uint32_t range,
-                                      void *data,
-                                      uint32_t offset /* = 0*/) const {
-  char *mapped;
-
-  vmaMapMemory(allocator_, buffer.allocation, (void **) &mapped);
-  mapped += offset;
-  memcpy(data, mapped, range);
-  memset(mapped, 0, range);
-  vmaUnmapMemory(allocator_, buffer.allocation);
-}
-
-void Engine::readFromBuffer(AllocatedBuffer &buffer, uint32_t range, void *data, uint32_t offset /* = 0*/) const {
-  char *mapped;
-
-  vmaMapMemory(allocator_, buffer.allocation, (void **) &mapped);
-  mapped += offset;
-  memcpy(data, mapped, range);
-  vmaUnmapMemory(allocator_, buffer.allocation);
-}
-
-void Engine::immediateSubmit(std::function<void(vk::CommandBuffer cmd)> &&function) {
-  vk::CommandBuffer cmd = upload_context_.command_buffer;
-  vk::CommandBufferBeginInfo cmd_begin_info{vk::CommandBufferUsageFlagBits::eOneTimeSubmit, nullptr};
-
-  cmd.begin(cmd_begin_info);
-  function(cmd);
-  cmd.end();
-  vk::SubmitInfo submit_info{0, nullptr, nullptr, 1, &cmd, 0, nullptr};
-
-  graphics_queue_.submit(submit_info, upload_context_.upload_fence);
-  const auto fence_wait_result = logical_device_.waitForFences(upload_context_.upload_fence, true, 10'000'000'000);
-  if (fence_wait_result!=vk::Result::eSuccess) abort();
-  logical_device_.resetFences(upload_context_.upload_fence);
-  logical_device_.resetCommandPool(upload_context_.command_pool);
-}
 
 void Engine::toggleCameraMode() {
   camera_->is_isometric = !camera_->is_isometric;
@@ -1243,7 +1061,7 @@ void Engine::writeCameraBuffer() {
                                              : glm::vec4(camera_->GetPosition(), 1.f);
   ubo.direction_of_light = glm::vec4(-camera_->view_direction_, 1.f);//glm::vec4(camera_->GetUp(), 1.f);
 
-  writeToBuffer(getCurrentFrame().cam_buffer, sizeof(GPUCamData), &ubo);
+  resource_manager_->writeToBuffer(getCurrentFrame().cam_buffer, &ubo, sizeof(GPUCamData));
 }
 
 void Engine::writeSceneBuffer() {
@@ -1256,7 +1074,7 @@ void Engine::writeSceneBuffer() {
   scene_data_.pointLights[0].lightColor = glm::vec4(1.f, 1.f, 1.f, 50.f);
   scene_data_.ambientColor = glm::vec4(1.f, 1.f, 1.f, 0.02f);
 
-  scene_data_buffer_.offset_ = paddedUniformBufferSize(sizeof(GPUSceneData))*getCurrentFrameIndex();
+  scene_data_buffer_.descriptor_buffer_info_.offset = paddedUniformBufferSize(sizeof(GPUSceneData))*getCurrentFrameIndex();
   resource_manager_->writeToBuffer(scene_data_buffer_, &scene_data_, sizeof(GPUSceneData));
 }
 
@@ -1296,12 +1114,12 @@ void Engine::writeCullBuffer() {
     cullData.cullCylinder = false;
   }
 
-  writeToBuffer(getCurrentFrame().cull_data_buffer, sizeof(GPUCullData), &cullData);
+  resource_manager_->writeToBuffer(getCurrentFrame().cull_data_buffer, &cullData, sizeof(GPUCullData));
 }
 
 void Engine::writeClearDrawCallBuffer() {
 
-  GPUDrawCalls draws;
+    GPUDrawCalls draws;
   uint32_t previousFirstInstance = 0;
   uint32_t previousMaxObjectCount = 0;
   for (const auto &type : scene_->objectTypes) {
@@ -1314,8 +1132,7 @@ void Engine::writeClearDrawCallBuffer() {
     previousFirstInstance = draws.commands[type->mesh_id].firstInstance;
     previousMaxObjectCount = type->MaxCount();
   }
-
-  stageBuffer(&draws, clear_draw_call_buffer_, sizeof(draws), 0);
+  resource_manager_->stageBuffer(&draws, sizeof(GPUDrawCalls), clear_draw_call_buffer_, upload_context_, graphics_queue_);
 }
 
 GPUOffsets Engine::getOffsets() {
@@ -1359,23 +1176,13 @@ GPUOffsets Engine::getOffsets() {
 
 void Engine::writeOffsetBuffer() {
   auto gpu_offsets = getOffsets();
-  writeToBuffer(getCurrentFrame().offset_buffer, sizeof(GPUOffsets), &gpu_offsets);
+  resource_manager_->writeToBuffer(getCurrentFrame().offset_buffer, &gpu_offsets, sizeof(GPUOffsets));
 }
 
 void Engine::writeObjectAndInstanceBuffer() {
-
-  void *objectData;
-  vmaMapMemory(allocator_, getCurrentFrame().object_buffer.allocation, &objectData);
-  auto *objectSSBO = (GPUObjectData *) objectData;
-
-  void *instanceData;
-  vmaMapMemory(allocator_, getCurrentFrame().instance_buffer.allocation, &instanceData);
-  auto *instanceSSBO = (GPUInstance *) instanceData;
-
-  scene_->writeObjectAndInstanceBuffer(objectSSBO, instanceSSBO, GetMovieFrameIndex(), selected_object_index_);
-
-  vmaUnmapMemory(allocator_, getCurrentFrame().object_buffer.allocation);
-  vmaUnmapMemory(allocator_, getCurrentFrame().instance_buffer.allocation);
+    auto *objectSSBO = (GPUObjectData *) resource_manager_->getMappedData(getCurrentFrame().object_buffer.handle_);
+    auto *instanceSSBO = (GPUInstance *) resource_manager_->getMappedData(getCurrentFrame().instance_buffer.handle_);
+    scene_->writeObjectAndInstanceBuffer(objectSSBO, instanceSSBO, GetMovieFrameIndex(), selected_object_index_);
 }
 
 nlohmann::json &Engine::getConfig() {
@@ -1422,41 +1229,23 @@ void Engine::initComputePipelines() {
   });
 }
 
-void Engine::stageBuffer(void *src,
-                         AllocatedBuffer dest,
-                         vk::DeviceSize size,
-                         vk::DeviceSize offset) {
 
-  // staging buffer info
-  using buf = vk::BufferUsageFlagBits;
-  VmaAllocationCreateInfo sb_alloc_info = {};
-  sb_alloc_info.usage = VMA_MEMORY_USAGE_CPU_ONLY;
-
-  // staging buffer creation
-  AllocatedBuffer staging_buffer = createBuffer(size, buf::eTransferSrc, VMA_MEMORY_USAGE_CPU_ONLY);
-  writeToBuffer(staging_buffer, size, src, offset);
-
-  immediateSubmit([=](vk::CommandBuffer cmd) {
-    vk::BufferCopy copy{0, offset, size};
-    cmd.copyBuffer(staging_buffer.buffer, dest.buffer, 1, &copy);
-  });
-  vmaDestroyBuffer(allocator_, staging_buffer.buffer, staging_buffer.allocation);
-}
 
 void Engine::resetDrawData(vk::CommandBuffer &cmd,
-                           AllocatedBuffer src,
-                           AllocatedBuffer dst,
-                           vk::DeviceSize size,
-                           vk::DeviceSize src_offset,
-                           vk::DeviceSize dst_offset) const {
+                           BufferResource src,
+                           BufferResource dst,
+                           vk::DeviceSize size) const {
 
-  vk::BufferCopy copy{src_offset, dst_offset, size};
-  cmd.copyBuffer(src.buffer, dst.buffer, copy);
+    auto& src_buffer = resource_manager_->getBuffer(src);
+    auto& dst_buffer = resource_manager_->getBuffer(dst);
+
+    vk::BufferCopy copy{src.descriptor_buffer_info_.offset, dst.descriptor_buffer_info_.offset, size};
+    cmd.copyBuffer(src_buffer.buffer_, dst_buffer.buffer_, copy);
 
   using acs = vk::AccessFlagBits;
   vk::BufferMemoryBarrier barrier
       {acs::eTransferWrite, acs::eShaderRead | acs::eShaderWrite, graphics_queue_family_, graphics_queue_family_,
-       dst.buffer, dst_offset, size};
+       dst_buffer.buffer_, dst.descriptor_buffer_info_.offset, size};
   cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
                       vk::PipelineStageFlagBits::eComputeShader,
                       {},
@@ -1468,8 +1257,7 @@ void Engine::resetDrawData(vk::CommandBuffer &cmd,
 void Engine::writeIndirectDispatchBuffer() {
   uint32_t group_count = ceil(scene_->uniqueShownObjectCount(GetMovieFrameIndex())/256.0);
   vk::DispatchIndirectCommand command{group_count, 1, 1};
-
-  writeToBuffer(indirect_dispatch_buffer_, sizeof(vk::DispatchIndirectCommand), &command);
+  resource_manager_->writeToBuffer(indirect_dispatch_buffer_, &command, sizeof(vk::DispatchIndirectCommand));
 }
 
 void Engine::enterEventMode(int eventID) {

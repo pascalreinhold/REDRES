@@ -75,7 +75,7 @@ class Engine {
   // buffers
   FrameData frame_data_[FRAMES_IN_FLIGHT];
   BufferResource scene_data_buffer_;
-  AllocatedBuffer indirect_dispatch_buffer_{};
+  BufferResource indirect_dispatch_buffer_{};
   BufferResource clear_draw_call_buffer_{};
 
   // descriptors
@@ -96,7 +96,6 @@ class Engine {
 
   // transfers
   UploadContext upload_context_;
-  void immediateSubmit(std::function<void(vk::CommandBuffer cmd)> &&function);
 
   // rendering
   std::unique_ptr<Window> window_;
@@ -104,11 +103,11 @@ class Engine {
 
   // meshes
   MeshMerger meshes;
-  void uploadMesh(Mesh &mesh, AllocatedBuffer &indexBuffer, AllocatedBuffer &vertexBuffer);
+  void uploadMesh(Mesh &mesh, BufferResource &indexBuffer, BufferResource &vertexBuffer);
   void loadMeshes();
 
   // rendering
-  void draw(vk::CommandBuffer &cmd) const;
+  void draw(vk::CommandBuffer &cmd);
   void beginRenderPass(vk::CommandBuffer &cmd, uint32_t swapchain_index);
   void runCullComputeShader(vk::CommandBuffer cmd);
 
@@ -203,29 +202,28 @@ class Engine {
   void initCamera();
   void initGlfwCallbacks();
 
-  // buffer manipulation
-  AllocatedBuffer createBuffer(size_t allocSize, vk::BufferUsageFlags usage, VmaMemoryUsage memory_usage) const;
-  size_t paddedUniformBufferSize(size_t old_size) const;
-  void stageBuffer(void *src, AllocatedBuffer dest, vk::DeviceSize size, vk::DeviceSize offset);
-  void writeClearDrawCallBuffer();
-  void writeIndirectDispatchBuffer();
-  void writeCameraBuffer();
-  void writeSceneBuffer();
-  void writeObjectAndInstanceBuffer();
-  void writeCullBuffer();
-  void writeOffsetBuffer();
-  void writeToBuffer(AllocatedBuffer &buffer, uint32_t range, void *data, uint32_t offset = 0) const;
-  [[maybe_unused]] void readFromBuffer(AllocatedBuffer &buffer, uint32_t range, void *data, uint32_t offset = 0) const;
-  void readFromBufferAndClearIt(AllocatedBuffer &buffer, uint32_t range, void *data, uint32_t offset = 0) const;
-  void resetDrawData(vk::CommandBuffer &cmd, AllocatedBuffer src, AllocatedBuffer dst,
-                     vk::DeviceSize size, vk::DeviceSize src_offset = 0, vk::DeviceSize dst_offset = 0) const;
+    // buffer manipulation
+    BufferResource createBuffer(size_t allocSize, vk::BufferUsageFlags usage, VmaMemoryUsage memory_usage) const;
+    size_t paddedUniformBufferSize(size_t old_size) const;
+    void writeClearDrawCallBuffer();
+    void writeIndirectDispatchBuffer();
+    void writeCameraBuffer();
+    void writeSceneBuffer();
+    void writeObjectAndInstanceBuffer();
+    void writeCullBuffer();
+    void writeOffsetBuffer();
+    void resetDrawData(vk::CommandBuffer &cmd,
+                     BufferResource src,
+                     BufferResource dst,
+                     vk::DeviceSize size) const;
 
-  friend class UserInterface;
-  GPUOffsets getOffsets();
-  void loadExperiment(int experiment_id);
-  void unloadExperiment();
-  void connectToDB();
-  void disconnectFromDB();
+    GPUOffsets getOffsets();
+    void loadExperiment(int experiment_id);
+    void unloadExperiment();
+    void connectToDB();
+    void disconnectFromDB();
+
+    friend class UserInterface;
 };
 
 }

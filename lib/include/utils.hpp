@@ -2,6 +2,7 @@
 
 #include "vulkan_types.hpp"
 #include "buffer.hpp"
+#include "mesh.hpp"
 
 #include <glm/glm.hpp>
 #include <deque>
@@ -16,14 +17,6 @@
 #define RCC_MESH_COUNT 5
 
 namespace rcc {
-
-enum meshID {
-  eAtom = 0,
-  eUnitCell = 1,
-  eVector = 2,
-  eCylinder = 3,
-  eBond = 4
-};
 
 struct PointLight {
   glm::vec4 position{5.f, 5.f, 5.f, 1.f};
@@ -87,14 +80,14 @@ struct GPUSceneData {
 };
 
 struct FrameData {
-  AllocatedBuffer cam_buffer{};
-  AllocatedBuffer object_buffer{};
-  AllocatedBuffer cull_data_buffer{};
-  AllocatedBuffer instance_buffer{};
-  AllocatedBuffer final_instance_buffer{};
-  AllocatedBuffer offset_buffer{};
-  AllocatedBuffer draw_call_buffer{};
-  AllocatedBuffer mouseBucketBuffer{};
+  BufferResource cam_buffer{};
+  BufferResource object_buffer{};
+  BufferResource cull_data_buffer{};
+  BufferResource instance_buffer{};
+  BufferResource final_instance_buffer{};
+  BufferResource offset_buffer{};
+  BufferResource draw_call_buffer{};
+  BufferResource mouseBucketBuffer{};
 
   vk::DescriptorSet globalDescriptorSet, test_compute_shader_set;
   vk::Semaphore present_semaphore, render_semaphore;

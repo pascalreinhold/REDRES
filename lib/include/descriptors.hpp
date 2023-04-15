@@ -3,7 +3,10 @@
 //
 
 #pragma once
+#include "buffer.hpp"
+
 #include <vulkan/vulkan.hpp>
+
 
 #include <vector>
 #include <unordered_map>
@@ -71,8 +74,7 @@ class DescriptorBuilder {
   static DescriptorBuilder begin(DescriptorLayoutCache *layout_cache, DescriptorAllocator *allocator);
 
   DescriptorBuilder &bindBuffer(uint32_t binding,
-                                vk::DescriptorBufferInfo *bufferInfo,
-                                vk::DescriptorType type,
+                                const BufferResource& buffer_resource,
                                 vk::ShaderStageFlags stageFlags);
   DescriptorBuilder &bindImage(uint32_t binding,
                                vk::DescriptorImageInfo *imageInfo,

@@ -441,11 +441,5 @@ MeshMerger &MeshMerger::addMesh(const Mesh &mesh, meshID mesh_id, vk::Pipeline p
   return *this;
 }
 
-MeshMerger::MeshMerger() {
-  accumulated_mesh_ = std::make_unique<Mesh>();
-  indexBuffer = {};
-  vertexBuffer = {};
-}
-
 } //namespace rcc
 

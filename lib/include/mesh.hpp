@@ -4,16 +4,25 @@
 
 #pragma once
 
-#include "utils.hpp"
-#include <vector>
+#include "buffer.hpp"
 #include "vulkan_types.hpp"
+
 #include <glm/gtx/transform.hpp>
 #include <glm/glm.hpp>
+#include <vector>
 
 #include <memory>
 #include <map>
 
 namespace rcc {
+
+enum meshID {
+    eAtom = 0,
+    eUnitCell = 1,
+    eVector = 2,
+    eCylinder = 3,
+    eBond = 4
+};
 
 struct VertexDescription {
   std::vector<vk::VertexInputBindingDescription> bindings_;
@@ -39,10 +48,10 @@ struct TexturedVertex {
 };
 
 struct MeshInterface {
+  BufferResource vertexBuffer_;
+  BufferResource indexBuffer_;
   virtual uint32_t getVertexCount() = 0;
-  virtual vk::Buffer getVertexBuffer() = 0;
   virtual uint32_t getIndicesCount() = 0;
-  virtual vk::Buffer getIndexBuffer() = 0;
 };
 
 //template<typename VertexType>
@@ -52,13 +61,8 @@ struct Mesh : public MeshInterface {
 
   float radius;
 
-  AllocatedBuffer vertexBuffer_;
-  AllocatedBuffer indexBuffer_;
-
   uint32_t getVertexCount() override { return vertices_.size(); };
-  vk::Buffer getVertexBuffer() override { return vertexBuffer_.buffer; };
   uint32_t getIndicesCount() override { return indices_.size(); };
-  vk::Buffer getIndexBuffer() override { return indexBuffer_.buffer; };
 
   void optimizeMesh();
 
@@ -72,9 +76,6 @@ struct Mesh : public MeshInterface {
 
 class MeshMerger {
  public:
-
-  AllocatedBuffer indexBuffer{}, vertexBuffer{};
-
   struct MeshInfo {
     vk::Pipeline pipeline;
     vk::PipelineLayout pipeline_layout;
@@ -84,7 +85,6 @@ class MeshMerger {
     float radius;
   };
 
-  MeshMerger();
   std::map<meshID, MeshInfo> meshInfos;
   MeshMerger &addMesh(const Mesh &mesh, meshID mesh_id, vk::Pipeline pipeline, vk::PipelineLayout layout);
 
@@ -94,13 +94,9 @@ class MeshMerger {
 struct TexturedMesh : public MeshInterface {
   std::vector<TexturedVertex> vertices_;
   std::vector<uint32_t> indices_;
-  AllocatedBuffer vertexBuffer_;
-  AllocatedBuffer indexBuffer_;
 
   uint32_t getVertexCount() override { return vertices_.size(); };
-  vk::Buffer getVertexBuffer() override { return vertexBuffer_.buffer; };
   uint32_t getIndicesCount() override { return indices_.size(); };
-  vk::Buffer getIndexBuffer() override { return indexBuffer_.buffer; };
 
   void loadFromObjFile(const std::string &filepath);
 };

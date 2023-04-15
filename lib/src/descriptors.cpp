@@ -167,12 +167,11 @@ DescriptorBuilder DescriptorBuilder::begin(DescriptorLayoutCache *layout_cache, 
 }
 
 DescriptorBuilder &DescriptorBuilder::bindBuffer(uint32_t binding,
-                                                 vk::DescriptorBufferInfo *bufferInfo,
-                                                 vk::DescriptorType type,
+                                                 const BufferResource& buffer_resource,
                                                  vk::ShaderStageFlags stageFlags) {
 
   // create binding
-  vk::DescriptorSetLayoutBinding new_binding{binding, type, 1,
+  vk::DescriptorSetLayoutBinding new_binding{binding, buffer_resource.descriptor_type_, 1,
                                              stageFlags, nullptr};
 
   bindings.push_back(new_binding);
@@ -182,13 +181,11 @@ DescriptorBuilder &DescriptorBuilder::bindBuffer(uint32_t binding,
   //.dstSet ist filled in later
   vk::WriteDescriptorSet newWrite{};
   newWrite.descriptorCount = 1;
-  newWrite.descriptorType = type;
-  newWrite.pBufferInfo = bufferInfo;
+  newWrite.descriptorType = buffer_resource.descriptor_type_;
+  newWrite.pBufferInfo = &buffer_resource.descriptor_buffer_info_;
   newWrite.dstBinding = binding;
-
   writes.push_back(newWrite);
   return *this;
-
 }
 
 DescriptorBuilder &DescriptorBuilder::bindImage(uint32_t binding,
