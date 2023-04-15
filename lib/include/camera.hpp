@@ -26,6 +26,9 @@ class Camera {
   [[nodiscard]] glm::mat4 GetViewMatrix() const;
   [[nodiscard]] glm::vec3 GetViewDirection() const { return view_direction_; }
   [[nodiscard]] glm::vec3 GetPosition() const { return position_; }
+  void alignPerspectivePositionToSystemCenter(float dist);
+  [[nodiscard]] glm::vec3 GetSystemCenter() const { return system_center; }
+  [[nodiscard]] glm::vec2 GetIsometricOffset() const { return isometric_offset_; }
   [[nodiscard]] glm::vec3 GetUp() const { return up_direction_; }
 
   glm::vec3 system_center{0.f};

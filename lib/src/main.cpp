@@ -3,7 +3,7 @@
 #include <iostream>
 
 int main(int argc, char* argv[]){
-  const char* db_filepath = (argc >= 2) ? argv[1] : "";
+  const char* db_filepath = (argc >= 2) ? argv[1] : nullptr;
   const char* assets_dir_path = (argc >= 3) ? argv[2] : nullptr;
 
   if(argc > 3) {

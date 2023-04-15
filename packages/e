@@ -1,0 +1,29 @@
+[Window][Debug##Default]
+Pos=60,60
+Size=400,400
+Collapsed=0
+
+[Window][Info Window]
+Pos=1498,60
+Size=422,478
+Collapsed=0
+
+[Window][Choose Database File##ChooseFileDlgKey]
+Pos=60,60
+Size=1152,691
+Collapsed=0
+
+[Window][Secondary Menubar]
+Pos=0,24
+Size=1920,36
+Collapsed=0
+
+[Window][Left Aligned]
+Pos=0,60
+Size=422,956
+Collapsed=0
+
+[Table][0xF9C22049,4]
+RefScale=18
+Column 0  Sort=0v
+

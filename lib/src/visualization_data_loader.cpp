@@ -35,28 +35,39 @@ bool sqlCheck(int result) {
 
 namespace rcc {
 
-VisDataManager::VisDataManager(const std::string &db_filepath, const int experiment_id) : db_filepath_(db_filepath) {
-  std::cout << "sqlite version: " << sqlite3_version << "\n";
-  std::cout << "DB-Filepath: " << db_filepath_ << "\n";
-  if (sqlCheck(connectToDBinReadOnly())) {
-    std::cout << "successfully connected to " << db_filepath_ << std::endl;
-  } else {
-    std::cerr << "could not connect to" << db_filepath_ << std::endl;
-  }
-
-  auto start = std::chrono::steady_clock::now();
-  load(experiment_id);
-  auto end = std::chrono::steady_clock::now();
-  std::chrono::duration<double> elapsed_seconds = end - start;
-  std::cout << "elapsed time for loading experiment Nr." << experiment_id << " and creating Bonds: "
-            << elapsed_seconds.count()*1000.f << "ms\n";
+VisDataManager::VisDataManager(const std::string &db_filepath) : db_filepath_(db_filepath) {
+    std::cout << "sqlite version: " << sqlite3_version << "\n";
+    connectToDB();
 }
 
+int VisDataManager::getExperimentCount() {
+    sqlite3_stmt *query;
+    sqlCheck(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM experiments", -1, &query, nullptr));
+    sqlite3_step(query);
+    int count = sqlite3_column_int(query, 0);
+    sqlite3_finalize(query);
+    return count;
+}
+
+int VisDataManager::getFirstExperimentID(){
+    sqlite3_stmt *query;
+    sqlCheck(sqlite3_prepare_v2(db, "SELECT id FROM experiments LIMIT 1", -1, &query, nullptr));
+    sqlite3_step(query);
+    int id = sqlite3_column_int(query, 0);
+    sqlite3_finalize(query);
+    return id;
+}
+
+
 VisDataManager::~VisDataManager() {
-  sqlCheck(disconnectFromDB());
+  disconnectFromDB();
 }
 
 void VisDataManager::load(const int experiment_id) {
+
+  assert(vis==nullptr && "VisDataManager::load: vis is not nullptr. Did you forget to call unload() before?");
+
+  auto start_time = std::chrono::steady_clock::now();
   //get system and setting ids
   vis = std::make_unique<VisualizationData>();
   sqlite3_stmt *query;
@@ -75,6 +86,11 @@ void VisDataManager::load(const int experiment_id) {
   RCC_PRINT_TIMING(loadAtomElementNumbersAndTags(experimentID_);)
   RCC_PRINT_TIMING(loadBonds(settingID_))
   RCC_PRINT_TIMING(loadHinuma(experiment_id))
+
+  auto end_time = std::chrono::steady_clock::now();
+  std::chrono::duration<double> elapsed_seconds = end_time - start_time;
+  std::cout << "elapsed time for loading experiment Nr." << experiment_id << " and creating Bonds: "
+            << elapsed_seconds.count()*1000.f << "ms\n";
 }
 
 static int sqlPositionReaderCallBack(void *data, int, char **columns, char **) {
@@ -329,7 +345,7 @@ void VisDataManager::exportEvents(int experimentID, EventsText &events) {
   sqlite3_finalize(queryEvents);
 }
 
-void VisDataManager::exportExperiments(Experiments &experiments) {
+void VisDataManager::exportExperimentIDTriplets(ExperimentIDTriplets &experiments) {
   sqlite3_stmt *query;
   sqlite3_prepare_v2(db, "SELECT id, system_id, setting_id FROM experiments", -1, &query, nullptr);
 
@@ -386,8 +402,6 @@ void VisDataManager::loadActiveEvent(int eventID) {
   sqlite3_bind_int(query, 1, eventID);
   sqlite3_step(query);
   vis->activeEvent->frameNumber = sqlite3_column_int(query, 0);
-  const int frameID = sqlite3_column_int(query, 1);
-
 
   sqlite3_prepare_v2(db,
                      "SELECT atom_number FROM event_atoms INNER JOIN atoms on event_atoms.atom_id = atoms.id WHERE event_id = ?",
@@ -525,8 +539,8 @@ int VisDataManager::getBaseTypePropertyID() const{
 
 void VisDataManager::updatePropertyForSelectedAtomsToDB(int experimentID, int propertyID, int value) {
 
-  sqlCheck(disconnectFromDB());
-  sqlCheck(connectToDBinReadWrite());
+  disconnectFromDB();
+  connectToDB(SQLITE_OPEN_READWRITE);
 
   sqlite3_stmt *transaction;
   sqlite3_prepare_v2(db, "BEGIN TRANSACTION", -1, &transaction, nullptr);
@@ -556,8 +570,8 @@ void VisDataManager::updatePropertyForSelectedAtomsToDB(int experimentID, int pr
   sqlite3_finalize(query);
   sqlite3_finalize(transaction);
 
-  sqlCheck(disconnectFromDB());
-  sqlCheck(connectToDBinReadOnly());
+  disconnectFromDB();
+  connectToDB();
 }
 
 void VisDataManager::negateSelectedByAreaTags() {
@@ -565,22 +579,35 @@ void VisDataManager::negateSelectedByAreaTags() {
     tag ^= Tags::eSelectedForTagging;
   }
 }
-int VisDataManager::connectToDBinReadOnly() {
-  return sqlite3_open_v2(db_filepath_.c_str(), &db, SQLITE_OPEN_READONLY, nullptr);
+
+void VisDataManager::connectToDB(int open_db_flags) {
+  auto result = sqlite3_open_v2(db_filepath_.c_str(), &db, open_db_flags, nullptr);
+  if(result == SQLITE_OK){
+    std::cout << "Connected to database: " << db_filepath_ << std::endl;
+  } else {
+    std::cout << "Failed to connect to database:" <<  db_filepath_ << std::endl;
+  }
 }
 
-int VisDataManager::connectToDBinReadWrite() {
-  return sqlite3_open_v2(db_filepath_.c_str(), &db, SQLITE_OPEN_READWRITE, nullptr);
-}
-
-int VisDataManager::disconnectFromDB() {
-  return sqlite3_close(db);
+void VisDataManager::disconnectFromDB() {
+  auto result = sqlite3_close(db);
+    if(result == SQLITE_OK){
+        std::cout << "Disconnected from database: " << db_filepath_ << std::endl;
+    } else {
+        std::cout << "Failed to disconnect from database:" <<  db_filepath_ << std::endl;
+    }
 }
 
 void VisDataManager::removeSelectedForMeasurementTags() {
     for (uint32_t &tag : vis->tags) {
         tag &= (~Tags::eSelectedForMeasurement);
     }
+}
+void VisDataManager::unload() {
+  vis.reset(nullptr);
+  experimentID_ = -1;
+  systemID_ = -1;
+  settingID_ = -1;
 }
 
 } // namespace rcc

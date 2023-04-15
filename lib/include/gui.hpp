@@ -43,15 +43,15 @@ class UserInterface {
   bool infoWindowVisible = true;
   bool stackToolVisible = false;
   bool demoWindowVisible = false;
-
-  // experiments
-  bool experimentsNeedRefresh = true;
   bool preferencesWindowVisible = false;
-  Experiments experiments_;
+  bool fpsVisible = true;
 
-  // cached database queries (ordered by id's):
+  // cached per db data:
+  bool experimentsNeedRefresh = true;
   std::map<int, SettingsText> loadedSettings;
   std::map<int, EventsText> loadedEventsText;
+  ExperimentIDTriplets experiments_;
+
 
   // windows + menubar
   void showLeftAlignedWindow();

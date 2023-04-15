@@ -13,7 +13,7 @@ vec3 BlinnPhong(
         vec3 diffuse_light = ambient_light.xyz * ambient_light.w;
         vec3 specular_light = vec3(0.0f);
         normalW = normalize(normalW);
-        vec3 view_direction = normalize(vec3(camera_positionW) - positionW);
+        vec3 view_direction = normalize(camera_positionW.xyz - positionW);
 
         for (int i = 0; i < POINT_LIGHT_COUNT; i++){
             vec3 direction_to_light = lights[i].positionW.xyz - positionW;

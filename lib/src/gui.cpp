@@ -32,6 +32,8 @@ namespace rcc {
 
 UserInterface::UserInterface(rcc::Engine *parent) : parentEngine{parent} {
   bLightMode = Engine::getConfig()["UseLightMode"].get<bool>();
+  fpsVisible = Engine::getConfig()["ShowFPS"].get<bool>();
+
   initImGui();
 }
 
@@ -44,7 +46,8 @@ void UserInterface::showMainMenubar() {
         clicked = true;
       }
       if (ImGui::MenuItem("Unload Database")) {
-        parentEngine->scene_->visManager.reset(nullptr);
+        parentEngine->unloadExperiment();
+        parentEngine->disconnectFromDB();
       }
       ImGui::Separator();
       if (ImGui::MenuItem("User Preferences")) {
@@ -232,7 +235,7 @@ void UserInterface::showLeftAlignedWindow() {
 
       if (ImGui::BeginChild("Experiments", {0.f, height*0.55f}, false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
         if (experimentsNeedRefresh) {
-          parentEngine->scene_->visManager->exportExperiments(experiments_);
+          parentEngine->scene_->visManager->exportExperimentIDTriplets(experiments_);
           experimentsNeedRefresh = false;
         }
         ImGui::Text("Experiments:");
@@ -251,7 +254,8 @@ void UserInterface::showLeftAlignedWindow() {
           if (!isActiveExperiment) {
             ImGui::SameLine();
             if (ImGui::SmallButton("load")) {
-              parentEngine->scene_->visManager->load(experimentID);
+              parentEngine->loadExperiment(experimentID);
+              //parentEngine->scene_->visManager->load(experimentID);
             }
           }
 
@@ -312,16 +316,19 @@ void UserInterface::showLeftAlignedWindow() {
 }
 
 void UserInterface::showInfoWindow() {
+
+
   float width = static_cast<float>(parentEngine->window_->width())*infoWindowRelativeWidth;
   float height = (static_cast<float>(parentEngine->window_->height()) - titleBarHeight - secondaryTitleBarHeight)
       *infoWindowRelativeHeight;
-
   ImGui::SetNextWindowSize({width, height});
   ImGui::SetNextWindowPos({static_cast<float>(parentEngine->window_->width()) - width + 1.f,
                            titleBarHeight + secondaryTitleBarHeight});
 
+
   if (ImGui::Begin("Info Window", nullptr, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
     if (ImGui::BeginChild("Info Window Child")) {
+
 
       ImGui::Text("FPS: %f", 1000.0/parentEngine->framerate_control_.avgFrameTime.avg());
 
@@ -331,8 +338,7 @@ void UserInterface::showInfoWindow() {
 #ifdef RCC_GUI_DEV_MODE
       ImGui::Checkbox("Enable Culling", &parentEngine->isCullingEnabled);
 #endif
-
-      if (parentEngine->scene_->visManager) {
+      if (parentEngine->experiment_state_ != eNone) {
         ImGui::SliderInt("Movie Framerate:", &parentEngine->framerate_control_.movie_framerate_, 1, 300);
         ImGui::SliderFloat("MovieFrameIndex",
                            &parentEngine->framerate_control_.movie_frame_index_,
@@ -395,7 +401,6 @@ void UserInterface::showInfoWindow() {
           ImGui::InputInt2("Window Sizes", dummy4);
         }
 #endif
-
         if(parentEngine->scene_->freezeAtom() != -1) ImGui::Text("Freeze AtomID: %d", parentEngine->scene_->visManager->data().atomIDs[parentEngine->scene_->freezeAtom()]);
 
 #ifdef RCC_GUI_DEV_MODE
@@ -406,53 +411,53 @@ void UserInterface::showInfoWindow() {
         }
 #endif
 
-
         // is there a selected object and at maximum one atom selected?
-        if (parentEngine->selected_object_index_!=-1 && parentEngine->selected_atom_numbers_.size() <= 1) {
-          ImGui::Text("%s",
-                      parentEngine->scene_->getObjectInfo(
-                          static_cast<uint32_t>(parentEngine->framerate_control_.movie_frame_index_),
-                          parentEngine->selected_object_index_).c_str());
+        if (!parentEngine->selected_atom_numbers_.empty()) {
+          if (parentEngine->selected_atom_numbers_.size() == 1) {
+            ImGui::Text("%s",
+                        parentEngine->scene_->getObjectInfo(
+                            static_cast<uint32_t>(parentEngine->framerate_control_.movie_frame_index_),
+                            parentEngine->selected_object_index_).c_str());
 
-          if (parentEngine->selected_atom_numbers_.size() > 0) {
-            int freezeID = parentEngine->scene_->freezeAtom();
-            int selectID = parentEngine->selected_object_index_;
+            if (!parentEngine->selected_atom_numbers_.empty()) {
+              int freezeID = parentEngine->scene_->freezeAtom();
+              int selectID = parentEngine->selected_object_index_;
 
-            static bool is_frozen;
-            is_frozen = freezeID==selectID;
-            bool aux = is_frozen;
+              static bool is_frozen;
+              is_frozen = freezeID==selectID;
+              bool aux = is_frozen;
 
-            ImGui::Checkbox("Pick Freeze Atom", &is_frozen);
-            if (is_frozen) { parentEngine->scene_->pickFreezeAtom(parentEngine->selected_object_index_); }
-            if (!is_frozen && aux) { parentEngine->scene_->pickFreezeAtom(-1); }
+              ImGui::Checkbox("Pick Freeze Atom", &is_frozen);
+              if (is_frozen) { parentEngine->scene_->pickFreezeAtom(parentEngine->selected_object_index_); }
+              if (!is_frozen && aux) { parentEngine->scene_->pickFreezeAtom(-1); }
+            }
+          } else {
+            uint32_t index1 = parentEngine->selected_atom_numbers_[0];
+            Eigen::Vector3f pos1 = parentEngine->scene_->visManager->data().positions[parentEngine->GetMovieFrameIndex()].row(index1);
+            uint32_t index2 = parentEngine->selected_atom_numbers_[1];
+            Eigen::Vector3f pos2 = parentEngine->scene_->visManager->data().positions[parentEngine->GetMovieFrameIndex()].row(index2);
+            Eigen::Vector3f displacement21 = parentEngine->scene_->visManager->data().calcMicDisplacementVec(pos2, pos1);
+            float dist21 = displacement21.norm();
+
+            if (parentEngine->selected_atom_numbers_.size() == 2){
+              ImGui::Text("Distance between atoms: %f", dist21);
+            }
+
+            if (parentEngine->selected_atom_numbers_.size() == 3){
+              uint32_t index3 = parentEngine->selected_atom_numbers_[2];
+              Eigen::Vector3f pos3 = parentEngine->scene_->visManager->data().positions[parentEngine->GetMovieFrameIndex()].row(index3);
+              Eigen::Vector3f displacement23 = parentEngine->scene_->visManager->data().calcMicDisplacementVec(pos2, pos3);
+              float dist23 = displacement23.norm();
+              float angle = abs(acosf(displacement21.dot(displacement23)/(dist21*dist23)));
+              ImGui::Text("Bond Angle of 2-1, 2-3: %f°", glm::degrees(angle));
+              ImGui::Text("Distance(mic) between atoms 1 and 2: %f", dist21);
+              ImGui::Text("Distance(mic) between atoms 2 and 3: %f", dist23);
+            }
+            for(auto i : parentEngine->selected_atom_numbers_) {
+              ImGui::Text("%s", parentEngine->scene_->getObjectInfo(
+                  static_cast<uint32_t>(parentEngine->framerate_control_.movie_frame_index_), i).c_str());
+            }
           }
-        } else {
-          uint32_t index1 = parentEngine->selected_atom_numbers_[0];
-          Eigen::Vector3f pos1 = parentEngine->scene_->visManager->data().positions[parentEngine->GetMovieFrameIndex()].row(index1);
-          uint32_t index2 = parentEngine->selected_atom_numbers_[1];
-          Eigen::Vector3f pos2 = parentEngine->scene_->visManager->data().positions[parentEngine->GetMovieFrameIndex()].row(index2);
-          Eigen::Vector3f displacement21 = parentEngine->scene_->visManager->data().calcMicDisplacementVec(pos2, pos1);
-          float dist21 = displacement21.norm();
-
-          if (parentEngine->selected_atom_numbers_.size() == 2){
-            ImGui::Text("Distance between atoms: %f", dist21);
-          }
-
-          if (parentEngine->selected_atom_numbers_.size() == 3){
-            uint32_t index3 = parentEngine->selected_atom_numbers_[2];
-            Eigen::Vector3f pos3 = parentEngine->scene_->visManager->data().positions[parentEngine->GetMovieFrameIndex()].row(index3);
-            Eigen::Vector3f displacement23 = parentEngine->scene_->visManager->data().calcMicDisplacementVec(pos2, pos3);
-            float dist23 = displacement23.norm();
-            float angle = abs(acosf(displacement21.dot(displacement23)/(dist21*dist23)));
-            ImGui::Text("Bond Angle of 2-1, 2-3: %f°", glm::degrees(angle));
-            ImGui::Text("Distance(mic) between atoms 1 and 2: %f", dist21);
-            ImGui::Text("Distance(mic) between atoms 2 and 3: %f", dist23);
-          }
-          for(auto i : parentEngine->selected_atom_numbers_) {
-            ImGui::Text("%s", parentEngine->scene_->getObjectInfo(
-                static_cast<uint32_t>(parentEngine->framerate_control_.movie_frame_index_), i).c_str());
-          }
-
         }
 
         auto &cellX = parentEngine->scene_->gConfig.xCellCount;
@@ -487,7 +492,6 @@ void UserInterface::showMaterialParameterWindow() {
     ImGui::Separator();
     ImGui::PopID();
   }
-
   ImGui::End();
 }
 
@@ -664,12 +668,14 @@ void UserInterface::showPreferencesWindow() {
     ImGui::SliderFloat("Hinuma Vector Thickness", &parentEngine->scene_->gConfig.hinumaVectorThickness, 0, 4);
     ImGui::Separator();
 
-    ImGui::Text("Further Options");
+    ImGui::Text("Miscellaneous");
+    ImGui::Checkbox("Show FPS", &fpsVisible);
   }
   ImGui::End();
 }
 
 void UserInterface::show() {
+
 
   ImGui_ImplVulkan_NewFrame();
   ImGui_ImplGlfw_NewFrame();
@@ -679,7 +685,7 @@ void UserInterface::show() {
   if (parentEngine->scene_->visManager) showSecondaryMenubar();
   if (parentEngine->scene_->visManager) showLeftAlignedWindow();
 
-  if (parentEngine->scene_->visManager) {
+  if (parentEngine->experiment_state_ != State::eNone) {
     if (parentEngine->scene_->visManager->data().activeEvent!=nullptr) showEventInfoWindow();
   }
 
@@ -690,6 +696,7 @@ void UserInterface::show() {
     ImGui::ShowStyleEditor();    // add style editor block (not a window). you can pass in a reference ImGuiStyle structure to compare to, revert to and save to (else it uses the default style)
     ImGui::End();
   }
+
   if (infoWindowVisible) showInfoWindow();
   if (stackToolVisible) ImGui::ShowStackToolWindow();
   if (demoWindowVisible) ImGui::ShowDemoWindow();
@@ -1031,8 +1038,11 @@ void UserInterface::showFileDialog(bool clicked) {
     if (ImGuiFileDialog::Instance()->IsOk()) {
       std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
       std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-      parentEngine->scene_->visManager.reset(nullptr);
-      parentEngine->scene_->visManager = std::make_unique<VisDataManager>(filePathName, 1);
+
+      parentEngine->disconnectFromDB();
+      parentEngine->db_filepath_ = filePathName;
+      parentEngine->connectToDB();
+
     }
     // close
     ImGuiFileDialog::Instance()->Close();

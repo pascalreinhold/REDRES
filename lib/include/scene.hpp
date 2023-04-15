@@ -106,7 +106,7 @@ struct CylinderType : public ObjectType {
 
 class Scene {
  public:
-  explicit Scene(const std::string &dbFilepath, int experimentID);
+  explicit Scene();
   ~Scene();
 
   // init this from settings file in constructor

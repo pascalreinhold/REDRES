@@ -21,6 +21,12 @@
 
 namespace rcc {
 
+enum State {
+  eNone,
+  eNew,
+  eOld
+};
+
 enum uiMode {
   eSelectAndTag,
   eMeasure
@@ -155,6 +161,10 @@ class Engine {
     float movie_frame_index_{0};
   } framerate_control_;
 
+  // control flow vars
+  State experiment_state_ = eNone;
+  State database_state = eNone;
+
   // file management
   std::string db_filepath_;
   std::string asset_dir_filepath_ = "/usr/share/gpu_driven_rcc/";
@@ -175,7 +185,6 @@ class Engine {
 
   // rcc vulkan wrapper
   std::unique_ptr<Swapchain> swapchain_;
-
   DeletionStack main_destruction_stack_;
 
   // init functions
@@ -210,6 +219,10 @@ class Engine {
 
   friend class UserInterface;
   GPUOffsets getOffsets();
+  void loadExperiment(int experiment_id);
+  void unloadExperiment();
+  void connectToDB();
+  void disconnectFromDB();
 };
 
 }

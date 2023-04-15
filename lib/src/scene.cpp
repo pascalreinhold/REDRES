@@ -12,8 +12,7 @@
 
 namespace rcc {
 
-Scene::Scene(const std::string &dbFilepath, int experimentID) {
-  if (!dbFilepath.empty()) visManager = std::make_unique<VisDataManager>(dbFilepath, experimentID);
+Scene::Scene() {
 
   objectTypes[meshID::eAtom] = new AtomType(*this);
   objectTypes[meshID::eUnitCell] = new UnitCellType(*this);
@@ -38,7 +37,7 @@ Scene::Scene(const std::string &dbFilepath, int experimentID) {
                                 {chemical_color[0], chemical_color[1], chemical_color[2], chemical_color[3]}
                                 };
 
-  if (visManager) freezeAtomIndex = tryPickFreezeAtom();
+  //if (visManager) freezeAtomIndex = tryPickFreezeAtom();
 }
 
 Scene::~Scene() {

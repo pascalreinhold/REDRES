@@ -39,12 +39,13 @@ static constexpr uint32_t GetVulkanApiVersion() {
 
 Engine *Engine::keyboardBackedEngine{nullptr};
 
-Engine::Engine(const char *db_filepath, const char *asset_dir_path) : db_filepath_(db_filepath) {
+Engine::Engine(const char *db_filepath, const char *asset_dir_path) {
   //needed to get feedback from inside glfw callback functions
   Engine::keyboardBackedEngine = this;
 
   // if a directory path was given overwrite the default one
   if (asset_dir_path) asset_dir_filepath_ = std::string(asset_dir_path);
+  if (db_filepath) db_filepath_ = std::string(db_filepath);
 
   try {
     // try to read non-default settings json (does not exist on the first app start or might be corrupted on a crash)
@@ -80,10 +81,11 @@ void Engine::init() {
   initSyncStructures();
   initDescriptors();
   initPipelines();
-  initVisData();
+  scene_ = std::make_unique<Scene>();
   initScene();
   initComputePipelines();
   ui = std::make_unique<UserInterface>(this);
+  if(!db_filepath_.empty()) connectToDB();
 }
 
 void Engine::initVulkan() {
@@ -240,6 +242,7 @@ void Engine::processMouseDrag() {
 }
 
 void Engine::run() {
+
   while (!window_->shouldClose()) {
     glfwPollEvents();
 
@@ -251,7 +254,7 @@ void Engine::run() {
                              sizeof(uint32_t)*RCC_MOUSE_BUCKET_COUNT,
                              mouse_buckets);
 
-    if (scene_->visManager) {
+    if (experiment_state_ != State::eNone) {
       // update selected index variable
       processMousePickingBuffer();
       processMouseDrag();
@@ -266,17 +269,15 @@ void Engine::run() {
         }
       }
     }
-
     ui->show();
+
     if(scene_->visManager) {
       if(window_->windowName() != (getConfig()["WindowName"].get<std::string>()) + " - " + scene_->visManager->getDBFilepath()) {
         window_->setWindowName((getConfig()["WindowName"].get<std::string>()) + " - " + scene_->visManager->getDBFilepath());
-        //std::cout << window_->windowName() << std::endl;
       }
     } else {
       if(window_->windowName() != (getConfig()["WindowName"].get<std::string>())) {
         window_->setWindowName((getConfig()["WindowName"].get<std::string>()));
-        //std::cout << window_->windowName() << std::endl;
       }
     }
     render();
@@ -420,14 +421,15 @@ void Engine::render() {
   if (fence_wait_result!=vk::Result::eSuccess) abort();
   logical_device_.resetFences(getCurrentFrame().render_fence);
 
-  if (scene_->visManager) {
+  if (experiment_state_ != eNone) {
     //reset IndirectDrawClearBuffer if we have a new Experiment
-    static int currExperimentID = -1;
-    if (currExperimentID!=scene_->visManager->getActiveExperiment()) {
-      currExperimentID = scene_->visManager->getActiveExperiment();
+
+    if (experiment_state_ == State::eNew) {
       loadMeshes();
       writeClearDrawCallBuffer();
+      experiment_state_ = State::eOld;
     }
+
     writeIndirectDispatchBuffer();
     writeObjectAndInstanceBuffer();
     writeOffsetBuffer();
@@ -441,13 +443,13 @@ void Engine::render() {
   vk::CommandBufferBeginInfo cmd_begin_info{};
   cmd.begin(cmd_begin_info);
 
-  if (scene_->visManager) {
+  if (experiment_state_ != eNone) {
     resetDrawData(cmd, clear_draw_call_buffer_, getCurrentFrame().draw_call_buffer, sizeof(GPUDrawCalls));
     runCullComputeShader(cmd);
   }
 
   beginRenderPass(cmd, swapchainIndex);
-  if (scene_->visManager) draw(cmd);
+  if (experiment_state_ != eNone) draw(cmd);
   ui->writeDrawDataToCmdBuffer(cmd);
   cmd.endRenderPass();
   cmd.end();
@@ -1082,10 +1084,6 @@ void Engine::immediateSubmit(std::function<void(vk::CommandBuffer cmd)> &&functi
   logical_device_.resetCommandPool(upload_context_.command_pool);
 }
 
-void Engine::initVisData() {
-  scene_ = std::make_unique<Scene>(db_filepath_, getConfig()["ExperimentID"]);
-}
-
 void Engine::toggleCameraMode() {
   camera_->is_isometric = !camera_->is_isometric;
 }
@@ -1125,6 +1123,48 @@ void Engine::mouseButtonCallback(int button, int action, int mods) {
 
 }
 
+void Engine::loadExperiment(int experiment_id){
+  assert(scene_->visManager!=nullptr && "vis manager must be initialized, i.e. a database must be connected before loading an experiment");
+
+  if(database_state == eOld && experiment_id == scene_->visManager->getActiveExperiment()){
+    std::cout << "already loaded experiment with id: " << experiment_id << std::endl;
+    return;
+  }
+
+  scene_->visManager->load(experiment_id);
+  float dist = glm::length(scene_->visManager->data().unitCellGLM * glm::vec3(1.f, 1.f, 1.f));
+  camera_->alignPerspectivePositionToSystemCenter(dist * 1.5f);
+  experiment_state_ = eNew;
+}
+
+void Engine::unloadExperiment(){
+  assert(scene_->visManager!=nullptr && "vis manager must be initialized, i.e. a database must be connected before unloading an experiment");
+  scene_->visManager->unload();
+  experiment_state_ = eNone;
+}
+
+void Engine::connectToDB(){
+  assert(scene_->visManager == nullptr && "vis manager must be uninitialized, i.e. a database must be disconnected before connecting to a new one");
+  scene_->visManager = std::make_unique<VisDataManager>(db_filepath_);
+  ui->experimentsNeedRefresh = true;
+  database_state = eNew;
+  if(scene_->visManager->getExperimentCount() == 1) {
+    loadExperiment(scene_->visManager->getFirstExperimentID());
+  }
+}
+
+void Engine::disconnectFromDB(){
+
+  // just kill the vis manager
+  scene_->visManager.reset(nullptr);
+  // reset ui per db state
+  ui->loadedSettings.clear();
+  ui->loadedEventsText.clear();
+  ui->experiments_.experimentSystemSettingIDs.clear();
+
+  database_state = eNone;
+}
+
 void glfw_scroll_callback(GLFWwindow *, double /*x_offset*/, double y_offset) {
   Engine::keyboardBackedEngine->scrollCallback(y_offset);
 }
@@ -1160,8 +1200,13 @@ void Engine::cleanupSelectAndTagMode() {
 void Engine::keyCallback(int key, int /*scancode*/, int action, int /*mods*/) {
   if (ui->wantKeyboard()) return;
   if (key==GLFW_KEY_ESCAPE && action==GLFW_PRESS) {
-    if(ui_mode_ == uiMode::eSelectAndTag) {cleanupSelectAndTagMode();}
-    if(ui_mode_ == uiMode::eMeasure) {cleanupMeasurementMode();}
+
+    if (ui->preferencesWindowVisible) {
+      ui->preferencesWindowVisible = false;
+    } else if (experiment_state_ != eNone) {
+      if(ui_mode_ == uiMode::eSelectAndTag) {cleanupSelectAndTagMode();}
+      if(ui_mode_ == uiMode::eMeasure) {cleanupMeasurementMode();}
+    }
   }
   if (key==GLFW_KEY_SPACE && action==GLFW_PRESS) toggleFrameControlMode();
   if (key==GLFW_KEY_TAB && action==GLFW_PRESS) toggleCameraMode();
@@ -1529,6 +1574,7 @@ void Engine::DumpSettingsJson(const std::string &filepath) {
   getConfig()["BoxCountZ"] = scene_->gConfig.zCellCount;
   getConfig()["ClearColor"] = clearColor;
   getConfig()["MaxCellCount"] = max_cell_count_;
+  getConfig()["ShowFPS"] = ui->fpsVisible;
 
   //dumb
   std::ofstream out_file(filepath);

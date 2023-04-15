@@ -31,6 +31,7 @@
     "HinumaThickness": 1.0,
     "IsIsometric": false,
     "UseLightMode": true,
+    "ShowFPS": true,
     "MovieFrameRate": 30,
     "IsometricDepth": 200.0,
     "IsometricHeight": 28.550010681152344,

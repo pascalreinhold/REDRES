@@ -140,8 +140,9 @@ Camera::Camera(const PerspectiveViewSettings &pSettings, const IsometricViewSett
     isometric_view_settings_{iSettings},
     is_isometric{false} {}
 
-//glm::vec3 Camera::GetSpectatorPosition() const {
-//  return glm::vec3();
-//}
+void Camera::alignPerspectivePositionToSystemCenter(float dist){
+  position_ = system_center - dist * view_direction_;
+}
+
 
 }  //namespace rcc

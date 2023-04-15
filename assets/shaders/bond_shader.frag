@@ -21,7 +21,8 @@ layout (location = 0) out vec4 outColor;
 void main()
 {
     bool isLeft = (dot((inPosition - inCenter), inBondNormal)) > 0;
-    vec3 bondColor = isLeft ? inColor1 : inColor2; // 36,24ms
+    //vec3 bondColor = isLeft ? inColor1 : inColor2; // 36,24ms
+    vec3 bondColor = mix(inColor1, inColor2, float(isLeft));
 
     vec3 linear_out_color = BlinnPhong(
                                            scene_ubo.ambient_light, scene_ubo.point_lights,
