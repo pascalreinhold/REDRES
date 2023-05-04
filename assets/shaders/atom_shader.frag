@@ -9,16 +9,21 @@ layout (location = 2) in vec3 inColor;
 layout (location = 3) in flat uint inID;
 layout (location = 4) in flat uint batchID;
 
-layout (location = 0) out vec4 outColor;
-
-
+layout (location = 0) out vec3 out_world_position;
+layout (location = 1) out vec3 out_world_normal;
+layout (location = 2) out vec3 out_color;
 
 
 #include "buffers.vert"
 #include "utils.frag"
 
-void main()
-{
+void main(){
+    out_world_position = inPosition;
+    out_world_normal = inNormal;
+    out_color = inColor;
+}
+
+/*
     vec3 linear_out_color = BlinnPhong(
                                            scene_ubo.ambient_light, scene_ubo.point_lights,
                                            inPosition, inNormal, inColor,
@@ -32,6 +37,4 @@ void main()
     if(length(scene_ubo.mouse_coords - gl_FragCoord.xy) < 1){
         buckets.arr[bucketIndex] = inID;
     }
-}
-
-
+*/

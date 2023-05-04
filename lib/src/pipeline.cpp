@@ -175,35 +175,35 @@ vk::PipelineDepthStencilStateCreateInfo PipelineBuilder::depthStencilCreateInfo(
 */
 
 std::vector<char> Pipeline::readFile(const std::string &filename) {
-  std::ifstream file(filename, std::ios::ate | std::ios::binary);
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
-  if (!file.is_open()) {
-    throw std::runtime_error("failed to open file: " + filename + "!");
-  }
+    if (!file.is_open()) {
+        throw std::runtime_error("failed to open file: " + filename + "!");
+    }
 
-  uint32_t file_size = static_cast<size_t>(file.tellg());
-  std::vector<char> buffer(static_cast<std::streamsize>(file_size));
-  file.seekg(0);
-  file.read(buffer.data(), static_cast<std::streamsize>(file_size));
-  file.close();
+    uint32_t file_size = static_cast<size_t>(file.tellg());
+    std::vector<char> buffer(static_cast<std::streamsize>(file_size));
+    file.seekg(0);
+    file.read(buffer.data(), static_cast<std::streamsize>(file_size));
+    file.close();
 
-  return buffer;
+    return buffer;
 }
 
 vk::ShaderModule Pipeline::createShaderModule(vk::Device &logical_device, const std::vector<char> &code) {
 
-  VkShaderModuleCreateInfo createInfo{
-      .sType = static_cast<VkStructureType>(vk::StructureType::eShaderModuleCreateInfo),
-      .pNext = nullptr,
-      .flags = 0,
-      .codeSize = code.size(),
-      .pCode = reinterpret_cast<const uint32_t *>(code.data())};
+    VkShaderModuleCreateInfo createInfo{
+        .sType = static_cast<VkStructureType>(vk::StructureType::eShaderModuleCreateInfo),
+        .pNext = nullptr,
+        .flags = 0,
+        .codeSize = code.size(),
+        .pCode = reinterpret_cast<const uint32_t *>(code.data())};
 
-  return logical_device.createShaderModule(createInfo);
+    return logical_device.createShaderModule(createInfo);
 }
 
 Pipeline::~Pipeline() {
-  device_.destroy(pipeline_);
+    device_.destroy(pipeline_);
 }
 
 Pipeline::Pipeline(vk::Device &device,
@@ -214,115 +214,115 @@ Pipeline::Pipeline(vk::Device &device,
                    vk::SpecializationInfo *const fragmentSpecializationInfo /*= nullptr*/
 ) : device_(device) {
 
-  // Create Shader Modules
-  vk::ShaderModule vertexShader = createShaderModule(device_, readFile(vertShaderFilepath));
-  vk::ShaderModule fragmentShader = createShaderModule(device_, readFile(fragShaderFilepath));
-  std::vector<vk::PipelineShaderStageCreateInfo> shaderStageInfos;
+    // Create Shader Modules
+    vk::ShaderModule vertexShader = createShaderModule(device_, readFile(vertShaderFilepath));
+    vk::ShaderModule fragmentShader = createShaderModule(device_, readFile(fragShaderFilepath));
+    std::vector<vk::PipelineShaderStageCreateInfo> shaderStageInfos;
 
-  shaderStageInfos.emplace_back(vk::PipelineShaderStageCreateFlags(),
-                                vk::ShaderStageFlagBits::eVertex,
-                                vertexShader,
-                                "main",
-                                vertexSpecializationInfo);
-  shaderStageInfos.emplace_back(vk::PipelineShaderStageCreateFlags(),
-                                vk::ShaderStageFlagBits::eFragment,
-                                fragmentShader,
-                                "main",
-                                fragmentSpecializationInfo);
+    shaderStageInfos.emplace_back(vk::PipelineShaderStageCreateFlags(),
+                                  vk::ShaderStageFlagBits::eVertex,
+                                  vertexShader,
+                                  "main",
+                                  vertexSpecializationInfo);
+    shaderStageInfos.emplace_back(vk::PipelineShaderStageCreateFlags(),
+                                  vk::ShaderStageFlagBits::eFragment,
+                                  fragmentShader,
+                                  "main",
+                                  fragmentSpecializationInfo);
 
-  //Create Vertex Input Infos
-  auto &attributeDescriptions = pipelineConfig.attributeDescriptions;
-  auto &bindingDescriptions = pipelineConfig.bindingDescriptions;
-  vk::PipelineVertexInputStateCreateInfo vertexInputInfo{{}, bindingDescriptions, attributeDescriptions};
+    //Create Vertex Input Infos
+    auto &attributeDescriptions = pipelineConfig.attributeDescriptions;
+    auto &bindingDescriptions = pipelineConfig.bindingDescriptions;
+    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{{}, bindingDescriptions, attributeDescriptions};
 
-  // Create Graphics Pipeline
-  vk::GraphicsPipelineCreateInfo pipelineInfo{
-      vk::PipelineCreateFlags(),
-      shaderStageInfos,
-      &vertexInputInfo,
-      &pipelineConfig.inputAssemblyInfo,
-      nullptr,
-      &pipelineConfig.viewportInfo,
-      &pipelineConfig.rasterizationInfo,
-      &pipelineConfig.multisampleInfo,
-      &pipelineConfig.depthStencilInfo,
-      &pipelineConfig.colorBlendInfo,
-      &pipelineConfig.dynamicStateInfo,
-      pipelineConfig.pipelineLayout,
-      pipelineConfig.renderPass,
-      pipelineConfig.subpass
-  };
+    // Create Graphics Pipeline
+    vk::GraphicsPipelineCreateInfo pipelineInfo{
+        vk::PipelineCreateFlags(),
+        shaderStageInfos,
+        &vertexInputInfo,
+        &pipelineConfig.inputAssemblyInfo,
+        nullptr,
+        &pipelineConfig.viewportInfo,
+        &pipelineConfig.rasterizationInfo,
+        &pipelineConfig.multisampleInfo,
+        &pipelineConfig.depthStencilInfo,
+        &pipelineConfig.colorBlendInfo,
+        &pipelineConfig.dynamicStateInfo,
+        pipelineConfig.pipelineLayout,
+        pipelineConfig.renderPass,
+        pipelineConfig.subpass
+    };
 
-  pipeline_ = device_.createGraphicsPipeline(nullptr, pipelineInfo).value;
-  // Shader Modules won't be reused so we delete them
-  device_.destroy(vertexShader);
-  device_.destroy(fragmentShader);
+    pipeline_ = device_.createGraphicsPipeline(nullptr, pipelineInfo).value;
+    // Shader Modules won't be reused so we delete them
+    device_.destroy(vertexShader);
+    device_.destroy(fragmentShader);
 }
 
 void Pipeline::defaultPipelineConfigInfo(PipelineConfig &info) {
-  info.inputAssemblyInfo = vk::PipelineInputAssemblyStateCreateInfo{
-      vk::PipelineInputAssemblyStateCreateFlags(),
-      vk::PrimitiveTopology::eTriangleList,
-      false
-  };
-
-  info.viewportInfo = vk::PipelineViewportStateCreateInfo{
-      vk::PipelineViewportStateCreateFlags(),
-      1, nullptr, 1, nullptr, // 1 viewport and 1 scissor placeholder
-  };
-
-  info.rasterizationInfo = vk::PipelineRasterizationStateCreateInfo{
-      vk::PipelineRasterizationStateCreateFlags(),
-      false,
-      false,
-      vk::PolygonMode::eFill,
-      vk::CullModeFlagBits::eNone,
-      vk::FrontFace::eClockwise,
-      false,
-      0, 0, 0,
-      1.f
-  };
-
-  info.multisampleInfo = vk::PipelineMultisampleStateCreateInfo{
-      vk::PipelineMultisampleStateCreateFlags(),
-      vk::SampleCountFlagBits::e1,
-      false,
-      1.f,
-      nullptr,
-      false,
-      false
-  };
-
-  {
-    using bf = vk::BlendFactor;
-    using bo = vk::BlendOp;
-    using cb = vk::ColorComponentFlagBits;
-    //vk::ColorComponentFlagBits;
-    info.colorBlendAttachment = vk::PipelineColorBlendAttachmentState{
-        false, bf::eZero, bf::eZero, bo::eAdd, bf::eZero, bf::eZero, bo::eAdd,
-        cb::eR | cb::eG | cb::eB | cb::eA};
-    info.colorBlendInfo = vk::PipelineColorBlendStateCreateInfo{
-        vk::PipelineColorBlendStateCreateFlags(),
-        false,
-        vk::LogicOp::eCopy,
-        info.colorBlendAttachment
+    info.inputAssemblyInfo = vk::PipelineInputAssemblyStateCreateInfo{
+        vk::PipelineInputAssemblyStateCreateFlags(),
+        vk::PrimitiveTopology::eTriangleList,
+        false
     };
-  }
 
-  info.depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo{
-      vk::PipelineDepthStencilStateCreateFlags(),
-      true,
-      true,
-      vk::CompareOp::eLess,
-      false,
-      false
-  };
+    info.viewportInfo = vk::PipelineViewportStateCreateInfo{
+        vk::PipelineViewportStateCreateFlags(),
+        1, nullptr, 1, nullptr, // 1 viewport and 1 scissor placeholder
+    };
 
-  info.dynamicStateEnables = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-  info.dynamicStateInfo = vk::PipelineDynamicStateCreateInfo{
-      vk::PipelineDynamicStateCreateFlags(),
-      info.dynamicStateEnables
-  };
+    info.rasterizationInfo = vk::PipelineRasterizationStateCreateInfo{
+        vk::PipelineRasterizationStateCreateFlags(),
+        false,
+        false,
+        vk::PolygonMode::eFill,
+        vk::CullModeFlagBits::eNone,
+        vk::FrontFace::eClockwise,
+        false,
+        0, 0, 0,
+        1.f
+    };
+
+    info.multisampleInfo = vk::PipelineMultisampleStateCreateInfo{
+        vk::PipelineMultisampleStateCreateFlags(),
+        vk::SampleCountFlagBits::e1,
+        false,
+        1.f,
+        nullptr,
+        false,
+        false
+    };
+
+    {
+        using bf = vk::BlendFactor;
+        using bo = vk::BlendOp;
+        using cb = vk::ColorComponentFlagBits;
+        //vk::ColorComponentFlagBits;
+        info.colorBlendAttachment = std::vector<vk::PipelineColorBlendAttachmentState>(1,{
+            false, bf::eZero, bf::eZero, bo::eAdd, bf::eZero, bf::eZero, bo::eAdd,
+            cb::eR | cb::eG | cb::eB | cb::eA});
+        info.colorBlendInfo = vk::PipelineColorBlendStateCreateInfo{
+            vk::PipelineColorBlendStateCreateFlags(),
+            false,
+            vk::LogicOp::eCopy,
+            info.colorBlendAttachment
+        };
+    }
+
+    info.depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo{
+        vk::PipelineDepthStencilStateCreateFlags(),
+        true,
+        true,
+        vk::CompareOp::eLess,
+        false,
+        false
+    };
+
+    info.dynamicStateEnables = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+    info.dynamicStateInfo = vk::PipelineDynamicStateCreateInfo{
+        vk::PipelineDynamicStateCreateFlags(),
+        info.dynamicStateEnables
+    };
 
 }
 

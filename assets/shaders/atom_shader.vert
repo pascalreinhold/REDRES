@@ -19,6 +19,7 @@ void main()
     const FinalInstance instance = final_instances.data[gl_InstanceIndex];
     uint objectID = instance.objectID;
     uint offsetID = instance.offsetID;
+
     mat4 model_matrix = object_buffer.objects[objectID].model_matrix;
     vec4 vertexPositionWorld = model_matrix * vec4(vertexPosition,1.f)  + offsets.data.offsets[offsetID];
     gl_Position = cam_ubo.projViewMat * vertexPositionWorld;

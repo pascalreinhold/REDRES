@@ -32,6 +32,8 @@
     "IsIsometric": false,
     "UseLightMode": true,
     "ShowFPS": true,
+    "DeferredVertexShaderFilepath": "./assets/shaders/deferred_shader.vert.spv",
+    "DeferredFragmentShaderFilepath": "./assets/shaders/deferred_shader.frag.spv",
     "MovieFrameRate": 30,
     "IsometricDepth": 200.0,
     "IsometricHeight": 28.550010681152344,

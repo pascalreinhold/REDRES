@@ -1,6 +1,5 @@
 TODO:
-    -> Swapchain Validation Error Message
-    -> BUG: MIC for non-orthorhombic Cells are not working correctly (Not sure if forget to transpose the unit cell matrix)
+    -> Swapchain Validation Error Message on resize
 
 DONE:
     -> Possibility to start with no db and have a db hot loaded
@@ -11,10 +10,13 @@ DONE:
     ->Make the Window-Resizable
     -> Camera Z-Coord has the wrong sign
     -> BUG: If reactant and catalyst are in different cells due to mic the cylinder is currently placed in the middle
+    -> BUG: MIC for non-orthorhombic Cells are not working correctly (Not sure if forget to transpose the unit cell matrix)
+    -> Unmapping of Device Memory should not be performed if the memory has to be remapped every frame
+    -> Create BufferAbstraction and check if less remapping improves performance
+
+
 
 Unnecessary:
     -> Check if specialization consts are available for compute pipelines
         -> if yes handle y invocation size with it
-    -> Unmapping of Device Memory should not be performed if the memory has to be remapped every frame
     -> Clean Up UBO-Buffer with the scene data
-    -> Create BufferAbstraction and check if less remapping improves performance
