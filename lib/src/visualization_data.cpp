@@ -65,7 +65,7 @@ void VisualizationData::createBonds(const float fudgeFactor) {
 }
 
 void VisualizationData::createBondsForNonRegularCell(const float fudgeFactor) {
-  unitCellEigen.transposeInPlace();
+  //unitCellEigen.transposeInPlace();
   const Eigen::Matrix3f inverseCellMatrix = unitCellEigen.inverse();
 
   float maxAtomRadius = 0;

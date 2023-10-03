@@ -1,15 +1,11 @@
 #pragma once
 
 //my files
-#include "scene.hpp"
+#include "utils.hpp"
 #include "mesh.hpp"
 #include "camera.hpp"
 #include "descriptors.hpp"
-#include "window.hpp"
-#include "pipeline.hpp"
 #include "vulkan_types.hpp"
-#include "swapchain.hpp"
-#include "visualization_data_loader.hpp"
 #include "buffer.hpp"
 
 //lib
@@ -21,6 +17,9 @@
 #include <chrono>
 
 namespace rcc {
+
+// forward declarations
+class Scene;
 
 enum State {
   eNone,
@@ -84,7 +83,7 @@ class Engine {
 
   // graphics pipelines and descriptor sets
   vk::PipelineLayout graphics_pipeline_layout_;
-  std::unique_ptr<Pipeline> atom_pipeline_, bond_pipeline_, atom_pipeline_iso_, bond_pipeline_iso_;
+  std::unique_ptr<class Pipeline> atom_pipeline_, bond_pipeline_, atom_pipeline_iso_, bond_pipeline_iso_;
   vk::DescriptorSetLayout graphics_descriptor_set_layout;
   SpecializationConstants specialization_constants_{};
 
@@ -98,7 +97,7 @@ class Engine {
   UploadContext upload_context_;
 
   // rendering
-  std::unique_ptr<Window> window_;
+  std::unique_ptr<class Window> window_;
   std::unique_ptr<Scene> scene_;
 
   // meshes
@@ -185,7 +184,7 @@ class Engine {
   vk::Queue graphics_queue_;
 
   // rcc vulkan wrapper
-  std::unique_ptr<Swapchain> swapchain_;
+  std::unique_ptr<class Swapchain> swapchain_;
   DeletionStack main_destruction_stack_;
 
 

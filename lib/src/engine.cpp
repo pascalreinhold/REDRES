@@ -1,6 +1,10 @@
 #include "engine.hpp"
 #include "gui.hpp"
 #include "buffer.hpp"
+#include "scene.hpp"
+#include "pipeline.hpp"
+#include "swapchain.hpp"
+#include "window.hpp"
 #include <GLFW/glfw3.h>
 
 #define VMA_IMPLEMENTATION
@@ -13,7 +17,6 @@
 #include <thread>
 #include <iostream>
 #include <glm/gtx/vector_angle.hpp>
-#include <glm/gtx/string_cast.hpp>
 
 namespace {
   glm::vec4 normalizePlane(const glm::vec4 &plane) {
@@ -113,10 +116,14 @@ void Engine::initVulkan() {
 
   window_->createSurface(instance_, &surface_);
 
+  vk::PhysicalDeviceFeatures required_features{};
+  required_features.fragmentStoresAndAtomics = true;
+
   vkb::PhysicalDeviceSelector selector{vkbInstance};
   vkb::PhysicalDevice vkbPhysicalDevice = selector
       .set_minimum_version(1, 1)
       .set_surface(surface_)
+      .set_required_features(required_features)
       .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
       .select()
       .value();
@@ -129,7 +136,6 @@ void Engine::initVulkan() {
 
   logical_device_ = vkbDevice.device;
   physical_device_ = vkbPhysicalDevice.physical_device;
-
   gpu_properties_ = vkbDevice.physical_device.properties;
 
   graphics_queue_ = vkbDevice.get_queue(vkb::QueueType::graphics).value();
@@ -1272,12 +1278,13 @@ void Engine::enterEventMode(int eventID) {
 
 void Engine::GetOptimalCameraPerspective() {
   using std::cout, std::endl;
-  const uint32_t spacingFrameCount = 80;
+  const int spacingFrameCount = 80;
   const Event &event = *scene_->visManager->data().activeEvent;
-  uint32_t firstFrameNumber =
-      std::clamp(static_cast<uint32_t>(event.frameNumber - spacingFrameCount), 0U, scene_->MovieFrameCount() - 1);
-  uint32_t lastFrameNumber =
-      std::clamp(static_cast<uint32_t>(event.frameNumber + spacingFrameCount), 0U, scene_->MovieFrameCount() - 1);
+  int firstFrameNumber =
+      std::clamp(event.frameNumber - spacingFrameCount, 0, static_cast<int>(scene_->MovieFrameCount() - 1));
+  int lastFrameNumber =
+      std::clamp(event.frameNumber + spacingFrameCount, 0, static_cast<int>(scene_->MovieFrameCount() - 1));
+
   const uint32_t frame_count = lastFrameNumber - firstFrameNumber + 1;
   const glm::vec3 up{0.f, 0.f, 1.f};
   const glm::vec3 normal =

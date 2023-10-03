@@ -3,6 +3,7 @@
 //
 
 #include "engine.hpp"
+#include "visualization_data_loader.hpp"
 #include "imgui.h"
 
 #pragma once

@@ -1,12 +1,16 @@
 //
 // Created by x on 3/4/23.
 //
+#include "gui.hpp"
+#include "scene.hpp"
+#include "window.hpp"
+#include "swapchain.hpp"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
 #include "ImGuiFileDialog.h"
-#include "gui.hpp"
+
 #include <glm/gtx/string_cast.hpp>
 
 namespace {
@@ -961,7 +965,7 @@ void UserInterface::initImGui() {
 
   const std::string imgui_ini_path = Engine::getConfig()["AssetDirectoryFilepath"].get<std::string>()
                                    + Engine::getConfig()["ImGuiIniFilepath"].get<std::string>();
-  ImGui::GetIO().IniFilename = imgui_ini_path.c_str();
+  ImGui::GetIO().IniFilename = "";
 
   if (bLightMode) {
     setupGuiStyle();

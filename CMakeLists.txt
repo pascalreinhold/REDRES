@@ -7,9 +7,9 @@ include(CMakePrintHelpers)
 set(CMAKE_CXX_STANDARD 20)
 
 add_definitions(-DGLM_FORCE_DEPTH_ZERO_TO_ONE)
-add_compile_options(-O3)
-#add_compile_options(-march=native)
-add_compile_options(-g)
+add_compile_options(-O2)
+add_compile_options(-march=native)
+add_compile_options(-g -pipe)
 
 option(PRINT_TIMINGS "Print the time for all database functions" OFF)
 option(GUI_DEV_MODE "Enable dev mode" OFF)

@@ -367,13 +367,13 @@ void VisDataManager::loadUnitCell(int systemID) {
   sqlite3_step(query);
 
   vis->unitCellEigen(0,0) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 0)), nullptr);
-  vis->unitCellEigen(0,1) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 1)), nullptr);
-  vis->unitCellEigen(0,2) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 2)), nullptr);
-  vis->unitCellEigen(1,0) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 3)), nullptr);
+  vis->unitCellEigen(1,0) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 1)), nullptr);
+  vis->unitCellEigen(2,0) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 2)), nullptr);
+  vis->unitCellEigen(0,1) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 3)), nullptr);
   vis->unitCellEigen(1,1) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 4)), nullptr);
-  vis->unitCellEigen(1,2) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 5)), nullptr);
-  vis->unitCellEigen(2,0) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 6)), nullptr);
-  vis->unitCellEigen(2,1) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 7)), nullptr);
+  vis->unitCellEigen(2,1) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 5)), nullptr);
+  vis->unitCellEigen(0,2) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 6)), nullptr);
+  vis->unitCellEigen(1,2) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 7)), nullptr);
   vis->unitCellEigen(2,2) = strtof(reinterpret_cast<const char *>(sqlite3_column_text(query, 8)), nullptr);
 
   for (int i = 0; i < 3; i++) {
@@ -381,6 +381,8 @@ void VisDataManager::loadUnitCell(int systemID) {
        vis->unitCellGLM[i][j] = vis->unitCellEigen(i, j);
     }
   }
+
+  vis->unitCellEigen.transposeInPlace();
 
   vis->pbcBondVector[0] = static_cast<float>(sqlite3_column_int(query, 9));
   vis->pbcBondVector[1] = static_cast<float>(sqlite3_column_int(query, 10));

@@ -4,9 +4,7 @@
 
 #pragma once
 #include "buffer.hpp"
-
 #include <vulkan/vulkan.hpp>
-
 
 #include <vector>
 #include <unordered_map>
