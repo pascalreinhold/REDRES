@@ -1,0 +1,13 @@
+C:\Users\ich\AppData\Local\JetBrains\Toolbox\apps\CLion\ch-0\232.8660.186\bin\cmake\win\x64\bin\cmake.exe -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=C:/Users/ich/AppData/Local/JetBrains/Toolbox/apps/CLion/ch-0/232.8660.186/bin/ninja/win/x64/ninja.exe -G Ninja -S C:\code\REDRES -B C:\code\REDRES\cmake-build-debug-visual-studio
+-- PROJECT_BINARY_DIR: C:/code/REDRES/cmake-build-debug-visual-studio
+-- SHADER_BINARY_DIR: C:/code/REDRES/assets/shaders/
+-- CMAKE_BINARY_DIR: C:/code/REDRES/cmake-build-debug-visual-studio
+-- CMAKE_CURRENT_BINARY_DIR: C:/code/REDRES/cmake-build-debug-visual-studio/shaders
+-- Using Win32 for window creation
+-- GLM: Version 0.9.9.9
+CMake Error at extern/CMakeLists.txt:19 (add_subdirectory):
+  add_subdirectory given source "C:/code/REDRES/extern/sqlite3_amalgamation"
+  which is not an existing directory.
+
+
+-- Configuring incomplete, errors occurred!

@@ -1,0 +1,19 @@
+[Window][Debug##Default]
+Pos=60,60
+Size=400,400
+Collapsed=0
+
+[Window][Info Window]
+Pos=1498,39
+Size=422,489
+Collapsed=0
+
+[Window][Choose Database File##ChooseFileDlgKey]
+Pos=106,93
+Size=928,403
+Collapsed=0
+
+[Table][0xA3E65CB3,4]
+RefScale=18
+Column 0  Sort=0v
+
