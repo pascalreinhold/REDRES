@@ -1,0 +1,392 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						2,
+						11,
+						12
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-d0094a50bb2071803777.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.18"
+					},
+					"projectIndex" : 0,
+					"source" : "."
+				},
+				{
+					"build" : "shaders",
+					"jsonFile" : "directory-shaders-Debug-f8e302432518b1289d1e.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.18"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "shaders",
+					"targetIndexes" : 
+					[
+						5
+					]
+				},
+				{
+					"build" : "extern",
+					"childIndexes" : 
+					[
+						3,
+						5,
+						6,
+						7,
+						9,
+						10
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-extern-Debug-88bde94350c4fc5056f9.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.18"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "extern",
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"build" : "extern/glfw",
+					"childIndexes" : 
+					[
+						4
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-extern.glfw-Debug-d1aa4f0853cdd9b86353.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.0"
+					},
+					"parentIndex" : 2,
+					"projectIndex" : 1,
+					"source" : "extern/glfw",
+					"targetIndexes" : 
+					[
+						7
+					]
+				},
+				{
+					"build" : "extern/glfw/src",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-extern.glfw.src-Debug-4775a3e437b10863df0d.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.0"
+					},
+					"parentIndex" : 3,
+					"projectIndex" : 1,
+					"source" : "extern/glfw/src",
+					"targetIndexes" : 
+					[
+						0,
+						8
+					]
+				},
+				{
+					"build" : "extern/vma",
+					"jsonFile" : "directory-extern.vma-Debug-c752bb727bebb7b428b3.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"parentIndex" : 2,
+					"projectIndex" : 2,
+					"source" : "extern/vma"
+				},
+				{
+					"build" : "extern/mesh_optimizer",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-extern.mesh_optimizer-Debug-bf17f2dc1f74609bc6d9.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"parentIndex" : 2,
+					"projectIndex" : 3,
+					"source" : "extern/mesh_optimizer",
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"build" : "extern/glm",
+					"childIndexes" : 
+					[
+						8
+					],
+					"jsonFile" : "directory-extern.glm-Debug-35cf56aad8212f7e4bdb.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.6"
+					},
+					"parentIndex" : 2,
+					"projectIndex" : 4,
+					"source" : "extern/glm"
+				},
+				{
+					"build" : "extern/glm/glm",
+					"jsonFile" : "directory-extern.glm.glm-Debug-3d9dd3b79f75f73626b8.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.6"
+					},
+					"parentIndex" : 7,
+					"projectIndex" : 4,
+					"source" : "extern/glm/glm"
+				},
+				{
+					"build" : "extern/sqlite3_amalgamation",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-extern.sqlite3_amalgamation-Debug-d139aa5aec8a87f3607a.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.8"
+					},
+					"parentIndex" : 2,
+					"projectIndex" : 0,
+					"source" : "extern/sqlite3_amalgamation",
+					"targetIndexes" : 
+					[
+						6
+					]
+				},
+				{
+					"build" : "extern/vk_bootstrap",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-extern.vk_bootstrap-Debug-144bccebb4da571c1a31.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.10"
+					},
+					"parentIndex" : 2,
+					"projectIndex" : 5,
+					"source" : "extern/vk_bootstrap",
+					"targetIndexes" : 
+					[
+						9
+					]
+				},
+				{
+					"build" : "render_engine",
+					"jsonFile" : "directory-render_engine-Debug-fffb210660ce3de129e3.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.18"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "render_engine",
+					"targetIndexes" : 
+					[
+						4
+					]
+				},
+				{
+					"build" : "app",
+					"jsonFile" : "directory-app-Debug-7ab44524cbd5ada90c6a.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.18"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "app",
+					"targetIndexes" : 
+					[
+						3
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3,
+						4,
+						5
+					],
+					"directoryIndexes" : 
+					[
+						0,
+						1,
+						2,
+						9,
+						11,
+						12
+					],
+					"name" : "gpu_driven_rcc",
+					"targetIndexes" : 
+					[
+						1,
+						3,
+						4,
+						5,
+						6
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						3,
+						4
+					],
+					"name" : "GLFW",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						0,
+						7,
+						8
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						5
+					],
+					"name" : "VMA",
+					"parentIndex" : 0
+				},
+				{
+					"directoryIndexes" : 
+					[
+						6
+					],
+					"name" : "meshoptimizer",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						7,
+						8
+					],
+					"name" : "glm",
+					"parentIndex" : 0
+				},
+				{
+					"directoryIndexes" : 
+					[
+						10
+					],
+					"name" : "VulkanBootstrap",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						9
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 4,
+					"id" : "glfw::@81d610105217ee077306",
+					"jsonFile" : "target-glfw-Debug-1707645153c8a7f3b0ff.json",
+					"name" : "glfw",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "imgui::@4b650f177ba80d6d5e76",
+					"jsonFile" : "target-imgui-Debug-0d073eddf5a5056040c5.json",
+					"name" : "imgui",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "meshoptimizer::@025cd8efb022ed164f1b",
+					"jsonFile" : "target-meshoptimizer-Debug-76fec822be531cf87e8f.json",
+					"name" : "meshoptimizer",
+					"projectIndex" : 3
+				},
+				{
+					"directoryIndex" : 12,
+					"id" : "render_engine_app::@5f5a17c01335469806cb",
+					"jsonFile" : "target-render_engine_app-Debug-eb41343f1010e6a92fdd.json",
+					"name" : "render_engine_app",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 11,
+					"id" : "render_engine_lib::@44abf09de5b39b97f631",
+					"jsonFile" : "target-render_engine_lib-Debug-a6411e0551538414a53e.json",
+					"name" : "render_engine_lib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "shaders::@8132085bf3b90c3252db",
+					"jsonFile" : "target-shaders-Debug-718a77b12db7749316c9.json",
+					"name" : "shaders",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 9,
+					"id" : "sqlite3::@d35416574c3e4f635a19",
+					"jsonFile" : "target-sqlite3-Debug-ee549e549969e93e66b3.json",
+					"name" : "sqlite3",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "uninstall::@13c6ebe2c8011b876f32",
+					"jsonFile" : "target-uninstall-Debug-fd35f963fd19f12076db.json",
+					"name" : "uninstall",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "update_mappings::@81d610105217ee077306",
+					"jsonFile" : "target-update_mappings-Debug-51ad43713b6c8109b981.json",
+					"name" : "update_mappings",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 10,
+					"id" : "vk-bootstrap::@f123837f3e134a11fc99",
+					"jsonFile" : "target-vk-bootstrap-Debug-577c3748a820c67ad82e.json",
+					"name" : "vk-bootstrap",
+					"projectIndex" : 5
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/code/REDRES/cmake-build-debug-visual-studio",
+		"source" : "C:/code/REDRES"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 5
+	}
+}
