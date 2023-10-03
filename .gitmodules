@@ -1,22 +1,35 @@
-[submodule "extern/vk-bootstrap"]
-	path = extern/vk-bootstrap
-	url = https://github.com/charles-lunarg/vk-bootstrap.git
-[submodule "extern/vulkan_memory_allocator"]
-	path = extern/vulkan_memory_allocator
+[submodule ".\\extern\\glfw"]
+	path = .\\extern\\glfw
+	url = https://github.com/glfw/glfw.git
+	branch = 3.3-stable
+[submodule ".\\extern\\vma"]
+	path = .\\extern\\vma
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-[submodule "extern/tinyobjloader"]
-	path = extern/tinyobjloader
-	url = https://github.com/tinyobjloader/tinyobjloader.git
-[submodule "extern/Eigen"]
-	path = extern/Eigen
-	url = https://gitlab.com/libeigen/eigen.git
-[submodule "extern/imgui"]
-	path = extern/imgui
-	url = https://github.com/ocornut/imgui.git
-[submodule "extern/meshoptimizer"]
-	path = extern/meshoptimizer
+[submodule ".\\extern\\mesh_optimizer"]
+	path = .\\extern\\mesh_optimizer
 	url = https://github.com/zeux/meshoptimizer.git
-[submodule "extern/imgui_filedialog"]
-	path = extern/imgui_filedialog
+[submodule ".\\extern\\glm"]
+	path = .\\extern\\glm
+	url = https://github.com/g-truc/glm.git
+[submodule ".\\extern\\imgui"]
+	path = .\\extern\\imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule ".\\extern\\imgui_filedialog"]
+	path = .\\extern\\imgui_filedialog
 	url = https://github.com/aiekick/ImGuiFileDialog.git
-	branch = Lib_Only
+[submodule ".\\extern\\Eigen_3_4_1"]
+	path = .\\extern\\Eigen_3_4_1
+	url = https://gitlab.com/libeigen/eigen.git
+	branch = 3.4.1
+[submodule ".\\extern\\sqlite3_amalgamation"]
+	path = .\\extern\\sqlite3_amalgamation
+	url = https://github.com/azadkuh/sqlite-amalgamation.git
+[submodule ".\\extern\\nlohmann_json"]
+	path = .\\extern\\nlohmann_json
+	url = https://github.com/nlohmann/json.git
+[submodule ".\\extern\\tiny_obj_loader"]
+	path = .\\extern\\tiny_obj_loader
+	url = https://github.com/tinyobjloader/tinyobjloader.git
+[submodule ".\\extern\\vk_bootstrap"]
+	path = .\\extern\\vk_bootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap.git

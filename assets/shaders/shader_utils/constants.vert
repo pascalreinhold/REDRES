@@ -1,6 +1,0 @@
-#ifndef SHADER_CONSTANTS
-#define SHADER_CONSTANTS
-
-#define RCC_MESH_COUNT 5
-
-#endif

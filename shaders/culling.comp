@@ -1,0 +1,119 @@
+#version 460
+
+#define RCC_MESH_COUNT 5
+
+struct PointLight{
+    vec4 positionW;
+    vec4 color;
+};
+
+struct ObjectData{
+    mat4 model_matrix;
+    vec4 color1;
+    vec4 color2;
+    vec4 bond_normal;
+    float radius;
+    uint batchID;
+};
+
+struct OffsetData{
+    vec4 offsets[27];
+};
+
+struct DrawIndexedIndirectCommand{
+    uint indexCount;
+    uint instanceCount;
+    uint firstIndex;
+    int vertexOffset;
+    uint firstInstance;
+};
+
+struct CullData{
+    mat4 viewMatrix;
+    vec4 frustumNormalEquations[6];
+    vec4 cylinderCenter;
+    vec4 cylinderNormal;
+    float cylinderLength;
+    float cylinderRadiusSquared;
+    uint uniqueObjectCount;
+    uint offsetCount;
+    bool isCullingEnabled;
+    bool cullCylinder;
+};
+
+struct Instance{
+    uint objectID;
+    uint batchID;
+};
+struct FinalInstance{
+    uint objectID;
+    uint offsetID;
+};
+
+layout (local_size_x = 256) in;
+
+layout(std430, set = 0, binding = 0) buffer ObjectBuffer{
+    ObjectData data[];
+}objects;
+
+layout(std430, set = 0, binding = 1) readonly buffer CullReadData{
+    CullData data;
+}cull_read_buffer;
+
+layout(std430, set = 0, binding = 2) readonly buffer InstanceBuffer{
+    Instance data[];
+}instances;
+
+layout(std430, set = 0, binding = 3) writeonly buffer FinalInstanceBuffer{
+    FinalInstance data[];
+}final_instances;
+
+layout(std430, set = 0, binding = 4) buffer DrawCallBuffer{
+    DrawIndexedIndirectCommand data[RCC_MESH_COUNT];
+}draws;
+
+layout(std430, set = 0, binding = 5) readonly buffer OffsetBuffer{
+    OffsetData data;
+}offsets;
+
+void main(){
+    uint invocationID = gl_GlobalInvocationID.x;
+    if(invocationID < cull_read_buffer.data.uniqueObjectCount){
+        for(uint i = 0; i < cull_read_buffer.data.offsetCount; i++){
+            uint objectID = instances.data[invocationID].objectID;
+            bool visible = true;
+
+            ObjectData obj = objects.data[objectID];
+            vec4 posW = obj.model_matrix[3] + offsets.data.offsets[i];
+            if(cull_read_buffer.data.cullCylinder){
+                vec3 displacement = vec3(cull_read_buffer.data.cylinderCenter - posW);
+                float projectedDisplacement = abs(dot(vec3(cull_read_buffer.data.cylinderNormal), displacement));
+                float radialDistanceSquared = dot(displacement, displacement) - projectedDisplacement * projectedDisplacement;
+                visible = visible && (projectedDisplacement - cull_read_buffer.data.cylinderLength < 0)
+                                  && (radialDistanceSquared - cull_read_buffer.data.cylinderRadiusSquared < 0);
+            }
+
+            if(cull_read_buffer.data.isCullingEnabled){
+                //perform culling
+                // C means camera space
+                vec3 posC = vec3(cull_read_buffer.data.viewMatrix * posW);
+
+                for(int i = 0; i < 6; i++){
+                    visible = visible && (dot(cull_read_buffer.data.frustumNormalEquations[i], vec4(posC,1)) > - obj.radius);
+                }
+            }
+
+            if(visible){
+                uint batchID = instances.data[invocationID].batchID;
+                uint countIndex = atomicAdd(draws.data[batchID].instanceCount, 1);
+
+                //to do change firstInstance in engine.cpp
+                uint instanceIndex = draws.data[batchID].firstInstance + countIndex;
+                FinalInstance new_instance;
+                new_instance.objectID = objectID;
+                new_instance.offsetID = i;
+                final_instances.data[instanceIndex] = new_instance;
+            }
+        }
+    }
+}
