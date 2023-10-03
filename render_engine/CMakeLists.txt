@@ -74,7 +74,7 @@ target_link_libraries(render_engine_lib PRIVATE imgui)
 target_include_directories(render_engine_lib PUBLIC "${CMAKE_SOURCE_DIR}/extern/Eigen_3_4_1")
 
 # sqlite3 [submodule] [amalgamation]
-target_link_libraries(render_engine_lib PUBLIC sqlite3)
+target_link_libraries(render_engine_lib PUBLIC SQLite3)
 target_include_directories(render_engine_lib PUBLIC "${CMAKE_SOURCE_DIR}/extern/sqlite3_amalgamation")
 
 # json [submodule] [header only]
