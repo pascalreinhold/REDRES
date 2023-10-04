@@ -55,7 +55,7 @@ class Swapchain {
 
   vk::Format chooseDepthFormat();
   static vk::SurfaceFormatKHR chooseSwapchainSurfaceFormat(const SwapchainSupportCapabilities &capabilities);
-  static vk::PresentModeKHR choosePresentMode(const SwapchainSupportCapabilities &capabilities);
+  static vk::PresentModeKHR choosePresentMode(const SwapchainSupportCapabilities &capabilities, bool vsync = true);
   static vk::Extent2D chooseSwapchainExtent(const SwapchainSupportCapabilities &capabilities,
                                             vk::Extent2D windowExtent);
 

@@ -54,17 +54,18 @@ void Camera::UpdateCamera(float frame_time, GLFWwindow *glfwWindow) {
   float view_axis_rotation = 0.f;
   glm::vec3 translation{0.f};
   glm::vec2 iso_translation{0.f, 0.f};
+  float zoom = 0.f;
 
   const glm::vec3 right_direction{glm::normalize(glm::cross(view_direction_, up_direction_))};
 
   if (glfwGetKey(glfwWindow, keyBindings::moveForward)==GLFW_PRESS) {
     translation += view_direction_;
-    iso_translation[1] -= 1;
+    zoom -= 1;
   }
 
   if (glfwGetKey(glfwWindow, keyBindings::moveBackward)==GLFW_PRESS) {
     translation -= view_direction_;
-    iso_translation[1] += 1;
+    zoom += 1;
   }
 
   if (glfwGetKey(glfwWindow, keyBindings::moveLeft)==GLFW_PRESS) {
@@ -79,10 +80,12 @@ void Camera::UpdateCamera(float frame_time, GLFWwindow *glfwWindow) {
 
   if (glfwGetKey(glfwWindow, keyBindings::moveUp)==GLFW_PRESS) {
     translation -= up_direction_;
+    iso_translation[1] += 1;
   }
 
   if (glfwGetKey(glfwWindow, keyBindings::moveDown)==GLFW_PRESS) {
     translation += up_direction_;
+    iso_translation[1] -= 1;
   }
 
   if (glfwGetKey(glfwWindow, keyBindings::lookRight)==GLFW_PRESS) up_axis_rotation--;
@@ -97,7 +100,6 @@ void Camera::UpdateCamera(float frame_time, GLFWwindow *glfwWindow) {
   float speed_amplifier = 1;
   if (glfwGetKey(glfwWindow, keyBindings::sneak)==GLFW_PRESS) speed_amplifier = 0.3f;
   if (glfwGetKey(glfwWindow, keyBindings::sprint)==GLFW_PRESS) speed_amplifier = 2.8f;
-
 
   // only translate if movement is non zero
   if (right_axis_rotation!=0) {
@@ -127,6 +129,7 @@ void Camera::UpdateCamera(float frame_time, GLFWwindow *glfwWindow) {
 
   if (is_isometric) {
     isometric_offset_ += dx*speed_amplifier*iso_translation;
+    isometric_view_settings_.isometric_height += dx*speed_amplifier*zoom;
   } else {
     if (glm::dot(translation, translation) > std::numeric_limits<float>::epsilon()) {
       position_ += dx*speed_amplifier*glm::normalize(translation);

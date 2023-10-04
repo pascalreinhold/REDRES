@@ -7,6 +7,7 @@
 #include "swapchain.hpp"
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
 #include "ImGuiFileDialog.h"
@@ -506,14 +507,15 @@ void UserInterface::showSecondaryMenubar() {
 
   ImGui::SetNextWindowSize({width, secondaryTitleBarHeight});
   ImGui::SetNextWindowPos({0., titleBarHeight});
+  float plus_button_size = ImGui::GetFrameHeight();
 
   ImGui::Begin("Secondary Menubar",
                nullptr,
                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
+
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImGui::GetStyle().ItemInnerSpacing);
   ImGui::Text("Align View");
   ImGui::SameLine();
-
-  float plus_button_size = ImGui::GetFrameHeight();
   if (ImGui::Button("X", ImVec2(plus_button_size, plus_button_size))) {
     parentEngine->camera_->view_direction_ = glm::vec3{1.f, 0.f, 0.f};
   }
@@ -525,8 +527,13 @@ void UserInterface::showSecondaryMenubar() {
   if (ImGui::Button("Z", ImVec2(plus_button_size, plus_button_size))) {
     parentEngine->camera_->view_direction_ = glm::vec3{0.f, 0.f, 1.f};
   }
+  ImGui::PopStyleVar();
 
   ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImGui::GetStyle().ItemInnerSpacing);
   ImGui::Text("Align Up");
   ImGui::SameLine();
   if (ImGui::Button("X##up", ImVec2(plus_button_size, plus_button_size))) {
@@ -540,6 +547,11 @@ void UserInterface::showSecondaryMenubar() {
   if (ImGui::Button("Z##up", ImVec2(plus_button_size, plus_button_size))) {
     parentEngine->camera_->up_direction_ = glm::vec3{0.f, 0.f, 1.f};
   }
+  ImGui::PopStyleVar();
+
+  ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
 
   static float step_size = 45.f;
   ImGui::SameLine();
@@ -549,11 +561,15 @@ void UserInterface::showSecondaryMenubar() {
   ImGui::InputFloat("##stepsize_input_float", &step_size, 15.f, 45.f, "%.1f");
   ImGui::PopItemWidth();
 
+    ImGui::SameLine();
+    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+    ImGui::SameLine();
+
   glm::vec3 &view_dir = parentEngine->camera_->view_direction_;
   glm::vec3 &up_dir = parentEngine->camera_->up_direction_;
   glm::vec3 right_dir = glm::cross(view_dir, up_dir);
 
-  ImGui::SameLine();
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImGui::GetStyle().ItemInnerSpacing);
   ImGui::Text("yaw:");
   ImGui::SameLine();
   if (ImGui::Button("-##yawminus", ImVec2(plus_button_size, plus_button_size))) {
@@ -563,8 +579,13 @@ void UserInterface::showSecondaryMenubar() {
   if (ImGui::Button("+##yawplus", ImVec2(plus_button_size, plus_button_size))) {
     view_dir = glm::mat3(glm::rotate(glm::radians(step_size), up_dir))*view_dir;
   }
+  ImGui::PopStyleVar();
 
   ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImGui::GetStyle().ItemInnerSpacing);
   ImGui::Text("roll:");
   ImGui::SameLine();
   if (ImGui::Button("-##rollminus", ImVec2(plus_button_size, plus_button_size))) {
@@ -574,8 +595,13 @@ void UserInterface::showSecondaryMenubar() {
   if (ImGui::Button("+##rollplus", ImVec2(plus_button_size, plus_button_size))) {
     up_dir = glm::mat3(glm::rotate(glm::radians(step_size), view_dir))*up_dir;
   }
+  ImGui::PopStyleVar();
 
   ImGui::SameLine();
+    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+    ImGui::SameLine();
+
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImGui::GetStyle().ItemInnerSpacing);
   ImGui::Text("pitch:");
   ImGui::SameLine();
   if (ImGui::Button("-##pitchminus", ImVec2(plus_button_size, plus_button_size))) {
@@ -587,6 +613,7 @@ void UserInterface::showSecondaryMenubar() {
     up_dir = glm::mat3(glm::rotate(glm::radians(step_size), right_dir))*up_dir;
     view_dir = glm::mat3(glm::rotate(glm::radians(step_size), right_dir))*view_dir;
   }
+    ImGui::PopStyleVar();
 
 
   // Button that stays activated when ui_mode_ == eSelectAndTag
@@ -780,8 +807,8 @@ void UserInterface::setupGuiStyle() {
   style.FramePadding = ImVec2(4.0f, 3.0f);
   style.FrameRounding = 8.0f;
   style.FrameBorderSize = 0.0f;
-  style.ItemSpacing = ImVec2(12.0f, 6.0f);
-  style.ItemInnerSpacing = ImVec2(8.0f, 4.0f);
+  style.ItemSpacing = ImVec2(8.0f, 6.0f);
+  style.ItemInnerSpacing = ImVec2(3.5f, 4.0f);
   style.CellPadding = ImVec2(4.0f, 2.0f);
   style.IndentSpacing = 20.0f;
   style.ColumnsMinSpacing = 6.0f;
@@ -869,8 +896,8 @@ void UserInterface::setupGuiStyleDark() {
   style.FramePadding = ImVec2(4.0f, 3.0f);
   style.FrameRounding = 8.0f;
   style.FrameBorderSize = 0.0f;
-  style.ItemSpacing = ImVec2(12.0f, 6.0f);
-  style.ItemInnerSpacing = ImVec2(8.0f, 4.0f);
+  style.ItemSpacing = ImVec2(8.0f, 6.0f);
+  style.ItemInnerSpacing = ImVec2(3.5f, 4.0f);
   style.CellPadding = ImVec2(4.0f, 2.0f);
   style.IndentSpacing = 20.0f;
   style.ColumnsMinSpacing = 6.0f;

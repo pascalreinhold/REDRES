@@ -83,7 +83,9 @@ vk::SurfaceFormatKHR Swapchain::chooseSwapchainSurfaceFormat(const SwapchainSupp
   return availableFormats[0];
 }
 
-vk::PresentModeKHR Swapchain::choosePresentMode(const SwapchainSupportCapabilities &capabilities) {
+vk::PresentModeKHR Swapchain::choosePresentMode(const SwapchainSupportCapabilities &capabilities, bool vsync) {
+    if(vsync) return vk::PresentModeKHR::eFifo;
+
   const auto &availablePresentModes = capabilities.presentModes;
 
   // mailbox present mode has lower latency and higher power consumption, because unnecessary work is done when rendering faster than monitor framerate
@@ -223,8 +225,18 @@ void Swapchain::createRenderPass() {
   // TODO CHECK IF SUBPASS DEPENDENCIES WERE REALLY UNNECESSARY
   // Check Out: https://www.reddit.com/r/vulkan/comments/s80reu/subpass_dependencies_what_are_those_and_why_do_i/
 
+  vk::SubpassDependency dependency{
+      VK_SUBPASS_EXTERNAL,
+      0,
+      vk::PipelineStageFlagBits::eColorAttachmentOutput,
+      vk::PipelineStageFlagBits::eColorAttachmentOutput,
+      {},
+      vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
+      {}
+  };
+
   vk::RenderPassCreateInfo renderPassInfo{
-      vk::RenderPassCreateFlags(), attachments, subpassDescription, nullptr};
+      vk::RenderPassCreateFlags(), attachments, subpassDescription, dependency};
   finalRenderPass = logicalDevice.createRenderPass(renderPassInfo);
 }
 
