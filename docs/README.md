@@ -31,6 +31,4 @@ After installing the software you can start it by running the following command 
 ```
 The third option is only necessary if you build the software from source or
 if the assets directory is not in the default location (/usr/share/gpu_driven_rcc)
-for other reasons.
-If you build from source following the instruction in [build.md](docs/build.md),
-the second command line should be "../"  
+for other reasons.  
