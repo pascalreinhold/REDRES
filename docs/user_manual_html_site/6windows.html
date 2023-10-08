@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="img/favicon.ico">
+        <title>Windows - REDRES Docs</title>
+        <link href="css/bootstrap.min.css" rel="stylesheet">
+        <link href="css/font-awesome.min.css" rel="stylesheet">
+        <link href="css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href=".">REDRES Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="1introduction.html" class="nav-link">Home</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="2installation.html" class="nav-link">Installation</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="3build.html" class="nav-link">Build</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="4usage.html" class="nav-link">Usage</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="5databases.html" class="nav-link">Databases</a>
+                            </li>
+                            <li class="navitem active">
+                                <a href="6windows.html" class="nav-link">Windows</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="7customization.html" class="nav-link">Customization</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                            <li class="nav-item">
+                                <a rel="prev" href="5databases.html" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="7customization.html" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#windows" class="nav-link">Windows</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#main-window" class="nav-link">Main Window</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#tool-windows" class="nav-link">Tool Windows</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#event-info-window" class="nav-link">Event Info Window</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#user-preferences-window" class="nav-link">User Preferences Window</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="windows">Windows</h1>
+<h2 id="main-window">Main Window</h2>
+<p>The main window is where any active experiment or event is displayed.</p>
+<h3 id="navigationcontrols">Navigation/Controls</h3>
+<p>You can move the camera through the scene to view your simulation from any angle.
+Use <code>wasd</code> to move forward, backward, left and right,
+<code>q</code> and <code>e</code> to move up and down,
+<code>r</code> and <code>f</code> to roll the camera.
+Using the <code>scroll wheel</code> you can move the camera forwards and backwards as well.</p>
+<p>While holding <code>control + left click</code> you can rotate the scene around the origin.
+Note that this does not rotate the camera but rather the scene itself.
+Pressing <code>shift + left click</code> on any atom will mark the atom as selected. Depending on the current mode, it will appear
+in either green for the <a href="#measure">Measuring Mode</a> or light steel blue for the <a href="#select-and-tag">Tagging Mode</a>.
+By using <code>Shift + left click</code> on empty space/background, you can undo all current selections.</p>
+<p>By pressing <code>Tab</code> you can toggle between the isometric and orthographic perspective.</p>
+<p>By hitting <code>space</code> you can pause/resume playback of simulation.</p>
+<h3 id="scene-alignment">Scene alignment</h3>
+<p>Instead of using the mouse to rotate the scene
+you may also use the <em>alignment</em> and <em>rotation</em> tools in the bar at the top of the window.
+There you can align the view or the up direction of the scene along either of the three coordinate axes.
+You can also rotate the scene by a fixed angle increment about any of the three coordinate axes.
+The angle step size can be adjusted in the <code>Step Size(°)</code> field.</p>
+<h3 id="view">View</h3>
+<p>The appearance of the simulation results can be adjusted in the <em>view</em> dropdown menu in the top left corner
+(see <a href="7customization.html#view">View</a>).</p>
+<h2 id="tool-windows">Tool Windows</h2>
+<p>The tool windows can be toggled in the <code>Tool Windows</code> dropdown menu in the top left corner.
+When activated, they can be resized.</p>
+<h3 id="info-window">Info Window</h3>
+<p>The <em>Info Window</em> has two modes, <code>Select and Tag</code> and <code>Measure</code>,
+which can be selected from using the buttons in the top right corner.
+Regardless of which mode is currently selected, some information stays the same across both modes:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Element</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>FPS counter</em></td>
+<td style="text-align: left;">Displays the current frames per second for the program</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>Movie Framerate</em></td>
+<td style="text-align: left;">Slider to adjusts the framerate of the movie displayed</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>Movie FrameIndex</em></td>
+<td style="text-align: left;">Slider to set the current Frame Index; will move automatically while a movie is running</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>Loop Simulation</em></td>
+<td style="text-align: left;">Checkbox to toggle, whether the movie loops</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>Manual Movie Frame Control</em></td>
+<td style="text-align: left;">Checkbox to Pause/resume the movie</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>Cells X/Y/Z</em></td>
+<td style="text-align: left;">Set the number of periodic cells along the given axis</td>
+</tr>
+</tbody>
+</table>
+<h4 id="measure">Measure</h4>
+<p>While in the <em>measuring</em> mode, you can select up to three atoms with <code>shift + left click</code>.
+When you select a fourth atom, the first one will be deselected.
+To deselect all atoms, click on empty space/background while holding <code>shift</code>.
+Atoms that are currently selected will appear in green.
+The <em>Info Window</em> will display data on each selected atom, such as their ID, element and position.
+Additionally, if multiple atoms are selected, the distance between them will be displayed. If three atoms are selected,
+the angle between them will be displayed as well. The angle is calculated as the angle between the two vectors.
+The first vector is the one connecting the first and second atom, the second vector is the one connecting the second.
+Note that REDRES uses the minimum image convention, so especially the distance values might not match what you would
+intuitively expect. To get a better understanding, try increasing the number of periodic cells in the <em>Info Window</em>.</p>
+<h4 id="select-and-tag">Select and Tag</h4>
+<p>The <em>select and tag</em> mode allows you to quickly tag Atoms.
+You can either exercise fine control by selecting single atoms with <code>shift + left click</code>
+or you can select multiple Atoms at once by dragging a box around a large number of atoms.
+The selected atoms will appear in light steel blue.
+In the <em>info window</em> you can find some buttons to invert or remove your current selection.
+Two further buttons in the <em>info window</em> allow you to
+toggle between coloring the atoms by element or by tag/base type.
+With the two remaining buttons, <code>Tag Selection as Chemical/Catalyst (to DB)</code>, you can set the tags of all currently
+selected atoms to either <code>Chemical</code> or <code>Catalyst</code> in the database. Note that this automatically overrides the
+database's current tag for the selected atoms without asking for confirmation or giving any feedback. </p>
+<h3 id="material-parameter-window">Material Parameter Window</h3>
+<p>Opening the <code>Material Parameter Window</code> will allow you to adjust the appearance of your simulation results by component
+via a collection of sliders. For more info, see <a href="7customization.html#material-parameters">Material Parameters</a>.</p>
+<h2 id="event-info-window">Event Info Window</h2>
+<p>Once you have selected an <a href="5databases.html#events">Event</a> the <em>Event Info Window</em> will appear on the bottom right.
+There you can edit settings pertaining to the event currently displayed and view some data on the atoms participating
+in the event as well as some details on the cylinder cropping.</p>
+<p>An outline of the cylinder is rendered by default, but you may want to hide the cylinder border.
+That can be done in the <a href="7customization.html#view">View</a> dropdown.</p>
+<p>The <em>Event Info Window</em> lets you edit the dimensions of the cropping cylinder:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Element</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>Cylinder Culling</em></td>
+<td style="text-align: left;">Checkbox to toggle, whether to hide anything outside the cropping cylinder</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>Use Surface Normal</em></td>
+<td style="text-align: left;">Checkbox to set the cylinder's main axis along the catalyst's surface normal vector (or their average, if multiple)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>Use Connection Normal</em></td>
+<td style="text-align: left;">Checkbox to set the cylinder's main axis along the chemical's connection normal vector (or their average, if multiple)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>Leave Event Mode</em></td>
+<td style="text-align: left;">Button to leave <em>event mode</em></td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>Cylinder Length</em></td>
+<td style="text-align: left;">Slider to set the cylinder height.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>Cylinder Radius</em></td>
+<td style="text-align: left;">Slider to set the cylinder base radius</td>
+</tr>
+</tbody>
+</table>
+<p>Displayed beneath is a list of the atoms participating in the event
+corresponding to the atoms highlighted in magenta.
+The internal values for the cylinder dimensions are displayed here as well.</p>
+<h2 id="user-preferences-window">User Preferences Window</h2>
+<p>Lastly there is the <em>User Preferences</em> Window, which can be accessed by clicking on <code>File &gt; User Preferences</code>
+in the top left corner. For information on the customization options within, see <a href="7customization.html#user-preferences-window">Customization &gt; User Preferences Window</a>.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+        </footer>
+        <script src="js/jquery-3.6.0.min.js"></script>
+        <script src="js/bootstrap.min.js"></script>
+        <script>
+            var base_url = ".",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="js/base.js"></script>
+
+        <div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
