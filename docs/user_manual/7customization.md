@@ -2,9 +2,6 @@
 
 You can adjust the appearance of the simulation results as well as the [camera movement behavior](#camera-movement-behavior).
 The most important options are easily accessible in the [View](#view) dropdown menu in the top left corner.
-All remaining settings are divided into two categories:
-* [Rendering Parameters](#material-parameters), dealing wihth the sizes of different elements in the scene
-* [Movie Parameters](#user-preferences-window), dealing with the appearance of different elements in the scene
 
 ## View
 
@@ -20,7 +17,7 @@ in the top left corner.
 ### Color Theme
 
 In the *Color Theme* section
-you can toggle light/dark mode by clicking the the `Toggle to Light/Dark Mode` button.
+you can toggle light/dark mode by clicking the `Toggle to Light/Dark Mode` button.
 Beneath that, there is the option to customize the editors base colors, either by entering an RGB-value or by
 using the color picker.
 
@@ -35,5 +32,6 @@ The Sliders in the *Rendering Parameters* section correspond to the settings in 
 
 ## Material Parameters
 
-The `Material Parameter Window` will allow you to adjust the appearance of your simulation results by component
-via a collection of sliders. They represent how the light in the scene interacts with each object type.
+The `Tool Windows > Material Parameter Window` allows you to adjust the appearance of your simulation results
+by component (atoms, bonds, vector arrows etc.)
+via a collection of sliders. They represent how light in the scene interacts with each object type.

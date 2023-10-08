@@ -20,7 +20,7 @@ view further details. By hovering over the entries, you can get a tooltip for ea
 The last list associated with an experiment is the *event* list. There, events are sorted by their *eventID*.
 In the rightmost column there is a `jump` button which will take you to the desired event, pulling up a cropped section
 of the simulation in the [Main Window](6windows.md#main-window),
-centered on the average position of all atoms participating in the event.
+centered on the average position of all atoms participating in the event. Those atoms are highlighted in magenta.
 The currently selected event will be marked as `active` in the event list.
 You can exit the event mode by clicking on the `Leave Event Mode` button in the [Event Info Window](6windows.md#event-info-window),
 where you'll also be able to find more event-related information and settings.

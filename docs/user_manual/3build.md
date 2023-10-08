@@ -1,10 +1,8 @@
 # Build Instructions
 
-| [Build Tools](#build-tools) | [External Dependencies](#external-dependencies) | [Compiling](#compiling) |
-
 ## Build Tools
 
-If you want to build the software from source you need to install the following tools, if you don't have them already.
+If you want to build the software from source you need to install the following tools if you don't have them already.
 - [git](https://git-scm.com/), to load the git submodules
 - [cmake](https://cmake.org/), to build the project
 - A C++ Compiler, e.g. the [GNU C++ Compiler](https://gcc.gnu.org/)
